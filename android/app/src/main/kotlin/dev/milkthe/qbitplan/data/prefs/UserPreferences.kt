@@ -20,6 +20,9 @@ data class UserPreferences(
     val teacherFullName: String? = null,
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val notificationsEnabled: Boolean = false,
+    val quietWeekends: Boolean = true,
+    /** Hide lessons of groups the student isn't in. */
+    val onlyMyGroups: Boolean = true,
 ) {
     val isOnboarded: Boolean
         get() = when (mode) {

@@ -5,65 +5,81 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** A foreground/background pair for tinted surfaces (badges, status accents). */
-@Immutable
-data class Tint(val container: Color, val content: Color, val accent: Color)
-
 /**
- * Design tokens, modelled on the HeroUI default theme. Screens read colours from
- * here (not hard-coded), so a new design only needs new token values.
+ * A status colour and its "soft" variants: [soft] is the tinted fill, [softForeground]
+ * text on it (HeroUI's `--x-soft` / `--x-soft-foreground`).
  */
+@Immutable
+data class Tone(val solid: Color, val soft: Color, val softForeground: Color)
+
+/** HeroUI v3 default theme, converted from OKLCH (see the design canvas, `ds/heroui/tokens.json`). */
 @Immutable
 data class QbitColors(
     val background: Color,
     val foreground: Color,
-    val content1: Color,
-    val content2: Color,
-    val content3: Color,
-    val divider: Color,
+    val surface: Color,
+    val surfaceSecondary: Color,
+    val surfaceTertiary: Color,
     val muted: Color,
-    val primary: Tint,
-    val secondary: Tint,
-    val success: Tint,
-    val warning: Tint,
-    val danger: Tint,
-    val neutral: Tint,
+    val default: Color,
+    val segment: Color,
+    val border: Color,
+    val separator: Color,
+    val onAccent: Color,
+    val onWarning: Color,
+    val accent: Tone,
+    val success: Tone,
+    val warning: Tone,
+    val danger: Tone,
     val isDark: Boolean,
 )
 
 @Immutable
-data class QbitRadius(val small: Dp = 8.dp, val medium: Dp = 12.dp, val large: Dp = 16.dp)
+data class QbitRadius(
+    val small: Dp = 6.dp,
+    val chip: Dp = 10.dp,
+    val field: Dp = 12.dp,
+    val tile: Dp = 14.dp,
+    val card: Dp = 20.dp,
+    val sheet: Dp = 28.dp,
+)
 
 internal val LightColors = QbitColors(
-    background = Color(0xFFFFFFFF),
-    foreground = Color(0xFF11181C),
-    content1 = Color(0xFFFFFFFF),
-    content2 = Color(0xFFF4F4F5),
-    content3 = Color(0xFFE4E4E7),
-    divider = Color(0x26111111),
+    background = Color(0xFFF5F5F5),
+    foreground = Color(0xFF18181B),
+    surface = Color(0xFFFFFFFF),
+    surfaceSecondary = Color(0xFFEFEFF0),
+    surfaceTertiary = Color(0xFFEAEAEB),
     muted = Color(0xFF71717A),
-    primary = Tint(container = Color(0xFFE6F1FE), content = Color(0xFF004493), accent = Color(0xFF006FEE)),
-    secondary = Tint(container = Color(0xFFF2EAFA), content = Color(0xFF481878), accent = Color(0xFF7828C8)),
-    success = Tint(container = Color(0xFFE8FAF0), content = Color(0xFF0E793C), accent = Color(0xFF17C964)),
-    warning = Tint(container = Color(0xFFFEFCE8), content = Color(0xFF936316), accent = Color(0xFFF5A524)),
-    danger = Tint(container = Color(0xFFFEE7EF), content = Color(0xFF920B3A), accent = Color(0xFFF31260)),
-    neutral = Tint(container = Color(0xFFF4F4F5), content = Color(0xFF3F3F46), accent = Color(0xFFA1A1AA)),
+    default = Color(0xFFEBEBEC),
+    segment = Color(0xFFFFFFFF),
+    border = Color(0xFFDEDEE0),
+    separator = Color(0xFFE4E4E7),
+    onAccent = Color(0xFFFCFCFC),
+    onWarning = Color(0xFF18181B),
+    accent = Tone(Color(0xFF0485F7), Color(0xFF0485F7).copy(alpha = 0.15f), Color(0xFF1E63AE)),
+    success = Tone(Color(0xFF17C964), Color(0xFF17C964).copy(alpha = 0.15f), Color(0xFF2B7745)),
+    warning = Tone(Color(0xFFF5A524), Color(0xFFF5A524).copy(alpha = 0.15f), Color(0xFF855F2E)),
+    danger = Tone(Color(0xFFFF383C), Color(0xFFFF383C).copy(alpha = 0.15f), Color(0xFFA43433)),
     isDark = false,
 )
 
 internal val DarkColors = QbitColors(
-    background = Color(0xFF000000),
-    foreground = Color(0xFFECEDEE),
-    content1 = Color(0xFF18181B),
-    content2 = Color(0xFF27272A),
-    content3 = Color(0xFF3F3F46),
-    divider = Color(0x26FFFFFF),
-    muted = Color(0xFFA1A1AA),
-    primary = Tint(container = Color(0xFF001731), content = Color(0xFF99C7FB), accent = Color(0xFF006FEE)),
-    secondary = Tint(container = Color(0xFF180828), content = Color(0xFFC9A9E9), accent = Color(0xFF9353D3)),
-    success = Tint(container = Color(0xFF052814), content = Color(0xFF74DFA2), accent = Color(0xFF17C964)),
-    warning = Tint(container = Color(0xFF312107), content = Color(0xFFF9C97C), accent = Color(0xFFF5A524)),
-    danger = Tint(container = Color(0xFF310413), content = Color(0xFFF871A0), accent = Color(0xFFF31260)),
-    neutral = Tint(container = Color(0xFF27272A), content = Color(0xFFD4D4D8), accent = Color(0xFF71717A)),
+    background = Color(0xFF060607),
+    foreground = Color(0xFFFCFCFC),
+    surface = Color(0xFF18181B),
+    surfaceSecondary = Color(0xFF232325),
+    surfaceTertiary = Color(0xFF262728),
+    muted = Color(0xFF9F9FA9),
+    default = Color(0xFF27272A),
+    segment = Color(0xFF46464C),
+    border = Color(0xFF28282C),
+    separator = Color(0xFF212124),
+    onAccent = Color(0xFFFCFCFC),
+    onWarning = Color(0xFF18181B),
+    accent = Tone(Color(0xFF0485F7), Color(0xFF0485F7).copy(alpha = 0.12f), Color(0xFF61A8FB)),
+    success = Tone(Color(0xFF17C964), Color(0xFF17C964).copy(alpha = 0.12f), Color(0xFF74D88F)),
+    warning = Tone(Color(0xFFF7B750), Color(0xFFF7B750).copy(alpha = 0.12f), Color(0xFFF9CB86)),
+    danger = Tone(Color(0xFFDB3B3E), Color(0xFFDB3B3E).copy(alpha = 0.15f), Color(0xFFEB7872)),
     isDark = true,
 )

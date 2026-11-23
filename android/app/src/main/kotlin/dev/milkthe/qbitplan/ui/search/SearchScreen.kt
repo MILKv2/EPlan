@@ -1,60 +1,63 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@file:OptIn(ExperimentalLayoutApi::class)
 
 package dev.milkthe.qbitplan.ui.search
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.milkthe.qbitplan.R
-import dev.milkthe.qbitplan.ui.common.AppScaffold
-import dev.milkthe.qbitplan.ui.common.CenteredMessage
+import dev.milkthe.qbitplan.ui.common.Chevron
+import dev.milkthe.qbitplan.ui.common.Hairline
 import dev.milkthe.qbitplan.ui.common.LoadingBox
-import dev.milkthe.qbitplan.ui.common.shortText
+import dev.milkthe.qbitplan.ui.common.SearchField
+import dev.milkthe.qbitplan.ui.common.SectionLabel
+import dev.milkthe.qbitplan.ui.common.SegmentedControl
+import dev.milkthe.qbitplan.ui.common.surface
 import dev.milkthe.qbitplan.ui.common.text
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
-import java.time.LocalTime
 
 @Composable
 fun SearchScreen(onOpen: (DetailKind, String) -> Unit, vm: SearchViewModel = hiltViewModel()) {
@@ -62,102 +65,199 @@ fun SearchScreen(onOpen: (DetailKind, String) -> Unit, vm: SearchViewModel = hil
     val query by vm.query.collectAsStateWithLifecycle()
     val results by vm.results.collectAsStateWithLifecycle()
 
-    AppScaffold(title = stringResource(R.string.tab_search)) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize()) {
-            val tabs = listOf(
-                SearchTab.TEACHERS to R.string.search_teachers,
-                SearchTab.CLASSES to R.string.search_classes,
-                SearchTab.ROOMS to R.string.search_rooms,
-                SearchTab.FREE_ROOMS to R.string.search_free_rooms,
+    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SegmentedControl(
+                options = listOf(
+                    stringResource(R.string.search_teacher),
+                    stringResource(R.string.search_class),
+                    stringResource(R.string.search_room),
+                    stringResource(R.string.search_free),
+                ),
+                selected = tab.ordinal,
+                onSelect = { vm.selectTab(SearchTab.entries[it]) },
+                modifier = Modifier.fillMaxWidth(),
             )
-            PrimaryScrollableTabRow(selectedTabIndex = tab.ordinal, edgePadding = 16.dp, containerColor = QbitTheme.colors.background) {
-                tabs.forEach { (t, label) ->
-                    Tab(selected = tab == t, onClick = { vm.selectTab(t) }, text = { Text(stringResource(label), maxLines = 1) })
+            if (tab != SearchTab.FREE_ROOMS) {
+                val hint = when (tab) {
+                    SearchTab.TEACHERS -> R.string.search_hint_teacher
+                    SearchTab.CLASSES -> R.string.search_hint_class
+                    else -> R.string.search_hint_room
                 }
+                SearchField(query, vm::setQuery, stringResource(hint))
             }
-            if (tab == SearchTab.FREE_ROOMS) {
-                FreeRooms(vm)
-            } else {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = vm::setQuery,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    placeholder = { Text(stringResource(R.string.search_hint)) },
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (query.isNotEmpty()) {
-                            IconButton(onClick = { vm.setQuery("") }) { Icon(Icons.Outlined.Close, contentDescription = stringResource(R.string.clear)) }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(QbitTheme.radius.medium),
-                )
-                val (entries, kind) = when (tab) {
-                    SearchTab.TEACHERS -> results.teachers to DetailKind.TEACHER
-                    SearchTab.CLASSES -> results.classes to DetailKind.CLASS
-                    else -> results.rooms to DetailKind.ROOM
+        }
+        when (tab) {
+            SearchTab.TEACHERS -> TeacherList(results.teachers) { onOpen(DetailKind.TEACHER, it) }
+            SearchTab.CLASSES -> EntryGrid(results.classes) { onOpen(DetailKind.CLASS, it) }
+            SearchTab.ROOMS -> EntryGrid(results.rooms) { onOpen(DetailKind.ROOM, it) }
+            SearchTab.FREE_ROOMS -> FreeRooms(vm)
+        }
+    }
+}
+
+@Composable
+private fun TeacherList(entries: List<SearchEntry>, onOpen: (String) -> Unit) {
+    if (entries.isEmpty()) return NothingFound()
+    val colors = QbitTheme.colors
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
+        items(entries, key = { it.id }) { entry ->
+            Hairline()
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .clickable(role = Role.Button) { onOpen(entry.id) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(Modifier.size(40.dp).clip(CircleShape).background(colors.accent.soft), contentAlignment = Alignment.Center) {
+                    Text(entry.title, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = colors.accent.softForeground, maxLines = 1, style = MaterialTheme.typography.bodySmall)
                 }
-                LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
-                    items(entries, key = { it.id }) { entry ->
-                        ListItem(
-                            supportingContent = entry.subtitle?.let { { Text(it, maxLines = 1) } },
-                            colors = ListItemDefaults.colors(containerColor = QbitTheme.colors.background),
-                            modifier = Modifier.clickable { onOpen(kind, entry.id) },
-                        ) { Text(entry.title) }
-                        HorizontalDivider(color = QbitTheme.colors.divider)
-                    }
+                Column(Modifier.weight(1f)) {
+                    Text(entry.title, style = MaterialTheme.typography.titleMedium)
+                    entry.subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                 }
+                Chevron()
             }
         }
     }
 }
 
 @Composable
+private fun EntryGrid(entries: List<SearchEntry>, onOpen: (String) -> Unit) {
+    if (entries.isEmpty()) return NothingFound()
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(entries, key = { it.id }) { entry -> GridTile(entry.title, entry.highlighted) { onOpen(entry.id) } }
+    }
+}
+
+/** 48dp tile used for class / room / teacher-short grids. */
+@Composable
+fun GridTile(text: String, highlighted: Boolean, selected: Boolean = false, subtitle: String? = null, onClick: () -> Unit) {
+    val colors = QbitTheme.colors
+    val shape = RoundedCornerShape(QbitTheme.radius.tile)
+    val bg = when {
+        selected -> colors.accent.solid
+        highlighted -> colors.accent.soft
+        else -> colors.surface
+    }
+    val fg = when {
+        selected -> colors.onAccent
+        highlighted -> colors.accent.softForeground
+        else -> colors.foreground
+    }
+    val base = Modifier.fillMaxWidth().height(48.dp)
+    Column(
+        modifier = (if (selected || highlighted) base.clip(shape).background(bg) else base.surface(shape, bg))
+            .clickable(role = Role.Button, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Text(text, style = MaterialTheme.typography.labelLarge, color = fg, maxLines = 1)
+        subtitle?.let { Text(it, fontSize = 10.sp, lineHeight = 12.sp, color = if (selected) colors.onAccent else colors.muted, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodySmall) }
+    }
+}
+
+@Composable
+private fun NothingFound() {
+    Text(
+        stringResource(R.string.search_nothing),
+        style = MaterialTheme.typography.bodyMedium,
+        color = QbitTheme.colors.muted,
+        modifier = Modifier.fillMaxWidth().padding(24.dp),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    )
+}
+
+@Composable
 private fun FreeRooms(vm: SearchViewModel) {
     val state by vm.freeRooms.collectAsStateWithLifecycle()
-    var pickerOpen by rememberSaveable { mutableStateOf(false) }
-
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = state.time == null, onClick = { vm.pickTime(null) }, label = { Text(stringResource(R.string.free_rooms_now)) })
-            FilterChip(
-                selected = state.time != null,
-                onClick = { pickerOpen = true },
-                label = { Text(state.time?.let { stringResource(R.string.free_rooms_at, it.text()) } ?: stringResource(R.string.free_rooms_pick_time)) },
+    val colors = QbitTheme.colors
+    if (state.loading) return LoadingBox()
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(4),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }, key = "mode") {
+            SegmentedControl(
+                options = listOf(stringResource(R.string.free_now), stringResource(R.string.free_picked)),
+                selected = if (state.pickedLesson) 1 else 0,
+                onSelect = { vm.pickLesson(if (it == 0) null else state.period) },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
-        when {
-            state.loading -> LoadingBox()
-            state.period == null -> CenteredMessage(stringResource(R.string.free_rooms_no_lesson))
-            else -> {
-                Text(
-                    text = stringResource(if (state.isNext) R.string.free_rooms_next_period else R.string.free_rooms_period, state.period!!, vm.date.shortText()),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                if (state.rooms.isEmpty()) {
-                    Text(stringResource(R.string.free_rooms_none), color = QbitTheme.colors.muted)
-                } else {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        state.rooms.forEach { AssistChip(onClick = {}, label = { Text(it) }) }
+        item(span = { GridItemSpan(maxLineSpan) }, key = "lessons") {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                items(state.lessons, key = { it }) { n ->
+                    val on = n == state.period
+                    Box(
+                        Modifier
+                            .size(44.dp)
+                            .clip(RoundedCornerShape(QbitTheme.radius.tile))
+                            .background(if (on) colors.accent.solid else Color.Transparent)
+                            .then(if (on) Modifier else Modifier.border(1.dp, colors.border, RoundedCornerShape(QbitTheme.radius.tile)))
+                            .clickable(role = Role.Button) { vm.pickLesson(n) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("$n", style = MaterialTheme.typography.labelLarge, color = if (on) colors.onAccent else colors.foreground)
                     }
                 }
             }
         }
-    }
-
-    if (pickerOpen) {
-        val initial = state.time ?: LocalTime.now()
-        val picker = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = true)
-        AlertDialog(
-            onDismissRequest = { pickerOpen = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.pickTime(LocalTime.of(picker.hour, picker.minute))
-                    pickerOpen = false
-                }) { Text(stringResource(R.string.ok)) }
-            },
-            dismissButton = { TextButton(onClick = { pickerOpen = false }) { Text(stringResource(R.string.cancel)) } },
-            text = { TimePicker(state = picker) },
-        )
+        item(span = { GridItemSpan(maxLineSpan) }, key = "info") {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icons.Outlined.Schedule, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
+                val time = listOfNotNull(state.start?.text(), state.end?.text()).joinToString("–")
+                val info = stringResource(R.string.free_info, state.period ?: 0, time) + if (state.pickedLesson) "" else " · " + stringResource(R.string.free_now_suffix)
+                Text(info, style = MaterialTheme.typography.bodyMedium, color = colors.muted)
+            }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }, key = "free-title") {
+            SectionLabel(stringResource(R.string.free_count, state.free.size))
+        }
+        items(state.free, key = { "f-" + it.room }) { tile ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .clip(RoundedCornerShape(QbitTheme.radius.tile))
+                    .background(colors.success.solid.copy(alpha = 0.16f))
+                    .border(1.dp, colors.success.solid.copy(alpha = 0.45f), RoundedCornerShape(QbitTheme.radius.tile)),
+                contentAlignment = Alignment.Center,
+            ) { Text(tile.room, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(horizontal = 4.dp)) }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }, key = "busy-title") {
+            SectionLabel(stringResource(R.string.busy_count, state.busy.size), Modifier.padding(top = 4.dp))
+        }
+        items(state.busy, key = { "b-" + it.room }) { tile ->
+            Column(
+                Modifier.fillMaxWidth().height(56.dp).clip(RoundedCornerShape(QbitTheme.radius.tile)).background(colors.surfaceSecondary),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(tile.room, style = MaterialTheme.typography.titleSmall, color = colors.muted, textDecoration = if (tile.unavailable) TextDecoration.LineThrough else null, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    if (tile.unavailable) stringResource(R.string.room_unavailable) else tile.usedBy.orEmpty(),
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    color = if (tile.unavailable) colors.danger.softForeground else colors.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+        }
+        item(span = { GridItemSpan(maxLineSpan) }, key = "end") { Spacer(Modifier.height(8.dp)) }
     }
 }

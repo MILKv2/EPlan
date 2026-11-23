@@ -43,6 +43,10 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setNotificationsEnabled(enabled: Boolean) = dataStore.edit { it[NOTIFICATIONS] = enabled }
 
+    suspend fun setQuietWeekends(enabled: Boolean) = dataStore.edit { it[QUIET_WEEKENDS] = enabled }
+
+    suspend fun setOnlyMyGroups(enabled: Boolean) = dataStore.edit { it[ONLY_MY_GROUPS] = enabled }
+
     suspend fun clearMode() = dataStore.edit { prefs: MutablePreferences -> prefs.remove(MODE) }
 
     private fun Preferences.toUserPreferences() = UserPreferences(
@@ -55,6 +59,8 @@ class UserPreferencesRepository @Inject constructor(
         teacherFullName = this[TEACHER_FULL_NAME],
         theme = this[THEME]?.let { name -> ThemeMode.entries.find { it.name == name } } ?: ThemeMode.SYSTEM,
         notificationsEnabled = this[NOTIFICATIONS] ?: false,
+        quietWeekends = this[QUIET_WEEKENDS] ?: true,
+        onlyMyGroups = this[ONLY_MY_GROUPS] ?: true,
     )
 
     private companion object {
@@ -67,5 +73,7 @@ class UserPreferencesRepository @Inject constructor(
         val TEACHER_FULL_NAME = stringPreferencesKey("teacher_full_name")
         val THEME = stringPreferencesKey("theme")
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
+        val QUIET_WEEKENDS = booleanPreferencesKey("quiet_weekends")
+        val ONLY_MY_GROUPS = booleanPreferencesKey("only_my_groups")
     }
 }

@@ -3,7 +3,7 @@ package dev.milkthe.qbitplan.ui
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -19,7 +19,6 @@ import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.ui.common.LocalClock
 import dev.milkthe.qbitplan.ui.onboarding.OnboardingScreen
 import dev.milkthe.qbitplan.ui.onboarding.OnboardingViewModel
-import dev.milkthe.qbitplan.ui.plan.PlanMode
 import dev.milkthe.qbitplan.ui.plan.PlanScreen
 import dev.milkthe.qbitplan.ui.plan.PlanViewModel
 import dev.milkthe.qbitplan.ui.search.DetailScreen
@@ -104,8 +103,7 @@ class ScreensTest {
     @Test
     fun planStudentLight() {
         student()
-        show { PlanScreen(PlanViewModel(repo, prefs, sync, clock)) }
-        waitForText("Wtorek, 24 listopada")
+        show { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_light")
     }
@@ -113,7 +111,7 @@ class ScreensTest {
     @Test
     fun planStudentDark() {
         student()
-        show(dark = true) { PlanScreen(PlanViewModel(repo, prefs, sync, clock)) }
+        show(dark = true) { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_dark")
     }
@@ -121,17 +119,17 @@ class ScreensTest {
     @Test
     fun planWeek() {
         student()
-        val vm = PlanViewModel(repo, prefs, sync, clock).apply { setMode(PlanMode.WEEK) }
-        show { PlanScreen(vm) }
-        waitForText("PT")
+        val vm = PlanViewModel(repo, prefs, sync, clock).apply { toggleWeek() }
+        show { PlanScreen(onOpenProfile = {}, vm = vm) }
+        waitForText("Pt")
         capture("plan_week")
     }
 
     @Test
     fun planTeacher() {
         teacher()
-        show { PlanScreen(PlanViewModel(repo, prefs, sync, clock)) }
-        waitForText("Wojciech Książkiewicz")
+        show { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        waitForText("1at")
         capture("plan_teacher")
     }
 
@@ -143,29 +141,29 @@ class ScreensTest {
         // start from the loaded state so the render check is deterministic.
         runBlocking { vm.state.first { !it.loading } }
         show { SubstitutionsScreen(vm) }
-        waitForText("Nieobecni nauczyciele")
+        waitForText("Nieobecni")
         capture("substitutions")
     }
 
     @Test
     fun searchTeachers() {
-        show { SearchScreen(onOpen = { _, _ -> }, vm = SearchViewModel(repo, sync, clock)) }
+        show { SearchScreen(onOpen = { _, _ -> }, vm = SearchViewModel(repo, prefs, sync, clock)) }
         waitForText("AA")
         capture("search_teachers")
     }
 
     @Test
     fun freeRooms() {
-        val vm = SearchViewModel(repo, sync, clock).apply { selectTab(SearchTab.FREE_ROOMS) }
+        val vm = SearchViewModel(repo, prefs, sync, clock).apply { selectTab(SearchTab.FREE_ROOMS) }
         show { SearchScreen(onOpen = { _, _ -> }, vm = vm) }
-        waitForText("Wolne sale na lekcji 2")
+        waitForText("Wolne · ")
         capture("free_rooms")
     }
 
     @Test
     fun classDetail() {
         val handle = SavedStateHandle(mapOf("kind" to "CLASS", "id" to "-210"))
-        show { DetailScreen(onBack = {}, vm = DetailViewModel(handle, repo, prefs, sync, clock)) }
+        show { DetailScreen(onBack = {}, onOpen = { _, _ -> }, vm = DetailViewModel(handle, repo, prefs, sync, clock)) }
         waitForText("Historia")
         capture("class_detail")
     }
@@ -174,14 +172,14 @@ class ScreensTest {
     fun settings() {
         student()
         show { SettingsScreen(onAbout = {}, vm = SettingsViewModel(repo, prefs, sync)) }
-        waitForText("Wersja planu 189")
+        waitForText("Ostatnia synchronizacja")
         capture("settings")
     }
 
     @Test
     fun onboarding() {
         show { OnboardingScreen(OnboardingViewModel(repo, prefs, sync, clock)) }
-        waitForText("Nauczyciel")
+        waitForText("Kim jesteś?")
         capture("onboarding")
     }
 }
