@@ -1,0 +1,44 @@
+# Testy jednostkowe przy PR i push do main, tylko gdy zmieni się kod apki
+# albo fixtures. Bez budowania APK, żeby było szybko (~3-5 min).
+name: Tests
+
+on:
+  pull_request:
+    paths: ["android/**", "fixtures/**", ".github/workflows/tests.yml"]
+  push:
+    branches: [main]
+    paths: ["android/**", "fixtures/**", ".github/workflows/tests.yml"]
+
+# Nowy push do tego samego PR anuluje poprzednie, niedokończone uruchomienie
+# (oszczędza minuty Actions).
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Testy jednostkowe
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest
+
+      - name: Raport testów
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: android/*/build/reports/tests/
+          retention-days: 7
