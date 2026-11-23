@@ -167,6 +167,10 @@ class DayPlannerTest {
         assertTrue("A10" in free4, "A10 freed by a room change")
         assertTrue("B23" !in free4, "B23 taken by a substitution")
         assertTrue("Brama Gł." !in free4 && "Park. B" !in free4, "duty spots are not classrooms")
+        val occupancy = planner.classroomOccupancy(tuesday, 4, s).associateBy { it.room.short }
+        assertEquals(listOf("1at"), occupancy.getValue("B23").classNames)
+        assertTrue(occupancy.getValue("A10").isFree)
+        assertTrue(planner.classroomOccupancy(tuesday, 2, s).single { it.room.short == "A24" }.unavailable)
         assertTrue("A24" !in planner.freeClassrooms(tuesday, 2, s).map { it.short }, "A24 unavailable in period 2")
         assertTrue(planner.freeClassrooms(tuesday, 4, null).map { it.short }.let { "A10" !in it && "B23" in it })
     }

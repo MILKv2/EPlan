@@ -1,30 +1,59 @@
 package dev.milkthe.qbitplan.ui.navigation
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SwapHoriz
 import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dev.milkthe.qbitplan.R
+import dev.milkthe.qbitplan.ui.common.Hairline
 import dev.milkthe.qbitplan.ui.plan.PlanScreen
 import dev.milkthe.qbitplan.ui.search.DetailScreen
 import dev.milkthe.qbitplan.ui.search.SearchScreen
@@ -55,43 +84,98 @@ private val TopLevels = listOf(
     TopLevel(SettingsRoute, SettingsRoute::class, R.string.tab_settings, Icons.Outlined.Settings),
 )
 
+private fun NavHostController.openTab(route: Any) = navigate(route) {
+    popUpTo(graph.findStartDestination().id) { saveState = true }
+    launchSingleTop = true
+    restoreState = true
+}
+
 @Composable
-fun MainNavigation() {
+fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
     val nav = rememberNavController()
     val entry by nav.currentBackStackEntryAsState()
     val destination = entry?.destination
+    val badge by badgeVm.todayChanges.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = QbitTheme.colors.background,
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            NavigationBar(containerColor = QbitTheme.colors.content1) {
-                TopLevels.forEach { item ->
-                    val selected = destination?.hierarchy?.any { it.hasRoute(item.routeClass) } == true
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            nav.navigate(item.route) {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
-                        icon = { Icon(item.icon, contentDescription = null) },
-                        label = { Text(stringResource(item.label)) },
-                    )
+            Column(Modifier.background(QbitTheme.colors.surface)) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(QbitTheme.colors.border))
+                Row(Modifier.fillMaxWidth().navigationBarsPadding().height(80.dp).padding(horizontal = 8.dp)) {
+                    TopLevels.forEach { item ->
+                        val selected = destination?.hierarchy?.any { it.hasRoute(item.routeClass) } == true
+                        NavItem(
+                            item = item,
+                            selected = selected,
+                            badge = if (item.route == SubstitutionsRoute && badge > 0) badge else null,
+                            onClick = { nav.openTab(item.route) },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         },
     ) { padding ->
+        val openDetail = { kind: dev.milkthe.qbitplan.ui.search.DetailKind, id: String -> nav.navigate(DetailRoute(kind.name, id)) }
         NavHost(nav, startDestination = PlanRoute, modifier = Modifier.padding(padding)) {
-            composable<PlanRoute> { PlanScreen() }
+            composable<PlanRoute> { PlanScreen(onOpenProfile = { nav.openTab(SettingsRoute) }) }
             composable<SubstitutionsRoute> { SubstitutionsScreen() }
-            composable<SearchRoute> { SearchScreen(onOpen = { kind, id -> nav.navigate(DetailRoute(kind.name, id)) }) }
+            composable<SearchRoute> { SearchScreen(onOpen = openDetail) }
             composable<SettingsRoute> { SettingsScreen(onAbout = { nav.navigate(AboutRoute) }) }
-            composable<DetailRoute> { DetailScreen(onBack = { nav.popBackStack() }) }
+            composable<DetailRoute> { DetailScreen(onBack = { nav.popBackStack() }, onOpen = openDetail) }
             composable<AboutRoute> { AboutScreen(onBack = { nav.popBackStack() }, onLicenses = { nav.navigate(LicensesRoute) }) }
             composable<LicensesRoute> { LicensesScreen(onBack = { nav.popBackStack() }) }
         }
+    }
+}
+
+@Composable
+private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, onClick: () -> Unit, modifier: Modifier) {
+    val colors = QbitTheme.colors
+    val pill by animateFloatAsState(if (selected) 1f else 0f, label = "navPill")
+    Column(
+        modifier = modifier.fillMaxHeight().clickable(role = Role.Tab, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
+    ) {
+        Box(Modifier.size(width = 64.dp, height = 32.dp), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { alpha = pill; scaleX = 0.4f + 0.6f * pill }
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.accent.solid.copy(alpha = 0.16f)),
+            )
+            Icon(item.icon, contentDescription = null, tint = if (selected) colors.accent.softForeground else colors.muted)
+            badge?.let {
+                Text(
+                    "$it",
+                    fontSize = 11.sp,
+                    lineHeight = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.onWarning,
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-10).dp, y = (-2).dp)
+                        .widthIn(min = 18.dp)
+                        .height(18.dp)
+                        .clip(CircleShape)
+                        .background(colors.warning.solid)
+                        .padding(horizontal = 5.dp),
+                )
+            }
+        }
+        Text(
+            stringResource(item.label),
+            fontSize = 12.sp,
+            lineHeight = 16.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            color = if (selected) colors.foreground else colors.muted,
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }

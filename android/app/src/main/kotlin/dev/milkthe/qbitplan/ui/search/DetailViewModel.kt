@@ -8,12 +8,16 @@ import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.milkthe.qbitplan.core.model.Timetable
 import dev.milkthe.qbitplan.core.schedule.DayPlanner
-import dev.milkthe.qbitplan.core.schedule.upcomingSchoolDays
+import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
+import dev.milkthe.qbitplan.core.schedule.periodAt
+import dev.milkthe.qbitplan.core.schedule.schoolWeekOf
 import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
+import dev.milkthe.qbitplan.ui.common.DayChip
 import dev.milkthe.qbitplan.ui.common.LessonItem
 import dev.milkthe.qbitplan.ui.common.LessonItemMapper
+import dev.milkthe.qbitplan.ui.common.dayOfWeekText
 import dev.milkthe.qbitplan.ui.navigation.DetailRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -27,18 +31,24 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalTime
 import javax.inject.Inject
 
-/** One info line, e.g. "matem" → "KK". */
+/** A related class / teacher the detail links to. */
 @Immutable
-data class InfoLine(val label: String, val value: String)
+data class Related(val kind: DetailKind, val id: String, val label: String)
+
+/** What a room is used for right now: `null` = free. */
+@Immutable
+data class RoomNow(val classes: String, val subject: String)
 
 @Immutable
 data class DetailState(
     val loading: Boolean = true,
     val title: String = "",
-    val subtitle: String? = null,
-    val info: List<InfoLine> = emptyList(),
+    val fullName: String? = null,
+    val roomNow: RoomNow? = null,
+    val related: List<Related> = emptyList(),
     val lessons: List<LessonItem> = emptyList(),
 )
 
@@ -49,19 +59,21 @@ class DetailViewModel @Inject constructor(
     repository: SchoolRepository,
     preferences: UserPreferencesRepository,
     private val sync: SyncManager,
-    clock: Clock,
+    private val clock: Clock,
 ) : ViewModel() {
 
     private val route = savedStateHandle.toRoute<DetailRoute>()
     val kind: DetailKind = DetailKind.valueOf(route.kind)
 
     val today: LocalDate = LocalDate.now(clock)
-    val dates: List<LocalDate> = upcomingSchoolDays(today, 5)
+    val dates: List<LocalDate> = schoolWeekOf(nearestSchoolDay(today))
+    val chips: List<DayChip> = dates.map { DayChip(it, it.dayOfWeekText(), it.dayOfMonth.toString(), it == today, false) }
 
-    private val selected = MutableStateFlow(dates.first())
-    val selectedDate: StateFlow<LocalDate> = selected.asStateFlow()
+    private val selected = MutableStateFlow(dates.indexOf(today).coerceAtLeast(0))
+    val selectedIndex: StateFlow<Int> = selected.asStateFlow()
 
-    val state: StateFlow<DetailState> = selected.flatMapLatest { date ->
+    val state: StateFlow<DetailState> = selected.flatMapLatest { index ->
+        val date = dates[index]
         combine(repository.timetable, repository.substitutions(date), preferences.preferences) { tt, subs, prefs ->
             tt ?: return@combine DetailState(loading = false)
             val timetable = tt.value
@@ -74,8 +86,10 @@ class DetailViewModel @Inject constructor(
                     DetailState(
                         loading = false,
                         title = teacher.short,
-                        subtitle = fullName,
-                        info = teacherInfo(timetable, teacher.id),
+                        fullName = fullName,
+                        related = timetable.lessonsForTeacher(teacher.id).flatMap { it.classIds }.distinct()
+                            .mapNotNull { timetable.classes[it] }.sortedBy { it.short }
+                            .map { Related(DetailKind.CLASS, it.id, it.short) },
                         lessons = mapper.map(planner.forTeacher(teacher.id, fullName, date, subs?.value), showClasses = true, viewerTeacherId = teacher.id),
                     )
                 }
@@ -84,18 +98,23 @@ class DetailViewModel @Inject constructor(
                     DetailState(
                         loading = false,
                         title = cls.short,
-                        subtitle = cls.classTeacherId?.let { timetable.teachers[it]?.short },
-                        info = classInfo(timetable, cls.id, mapper),
+                        related = timetable.lessonsForClass(cls.id).flatMap { it.teacherIds }.distinct()
+                            .mapNotNull { timetable.teachers[it] }.sortedBy { it.short }
+                            .map { Related(DetailKind.TEACHER, it.id, it.short) },
                         lessons = mapper.map(planner.forClass(cls.id, date, subs?.value), showClasses = false),
                     )
                 }
                 DetailKind.ROOM -> {
                     val room = timetable.classrooms[route.id] ?: return@combine DetailState(loading = false)
+                    val plan = planner.forClassroom(room.id, date, subs?.value)
                     DetailState(
                         loading = false,
                         title = room.short,
-                        subtitle = room.name.takeIf { it != room.short },
-                        lessons = mapper.map(planner.forClassroom(room.id, date, subs?.value), showClasses = true),
+                        roomNow = if (date == today) roomNow(timetable, plan, room.short, mapper) else null,
+                        related = timetable.lessonsForClassroom(room.id).flatMap { it.classIds }.distinct()
+                            .mapNotNull { timetable.classes[it] }.sortedBy { it.short }
+                            .map { Related(DetailKind.CLASS, it.id, it.short) },
+                        lessons = mapper.map(plan, showClasses = true),
                     )
                 }
             }
@@ -103,29 +122,20 @@ class DetailViewModel @Inject constructor(
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailState())
 
     init {
-        sync.ensureSubstitutions(dates.first())
+        dates.forEach(sync::ensureSubstitutions)
     }
 
-    fun select(date: LocalDate) {
-        selected.value = date
-        sync.ensureSubstitutions(date)
+    fun select(index: Int) { selected.value = index }
+
+    private fun roomNow(
+        tt: Timetable,
+        plan: List<dev.milkthe.qbitplan.core.schedule.PlannedLesson>,
+        short: String,
+        mapper: LessonItemMapper,
+    ): RoomNow? {
+        val period = periodAt(tt.periods, LocalTime.now(clock)) ?: return null
+        val lesson = plan.firstOrNull { period in it.periods && it.status.takesPlace && it.classroom?.new?.split(", ")?.contains(short) == true }
+            ?: return null
+        return RoomNow(lesson.classNames.joinToString(", "), mapper.subjectName(lesson.subject.new))
     }
-
-    /** Classes taught, per subject. */
-    private fun teacherInfo(tt: Timetable, teacherId: String): List<InfoLine> =
-        tt.lessonsForTeacher(teacherId)
-            .groupBy { tt.subjects[it.subjectId]?.short.orEmpty() }
-            .map { (subject, lessons) ->
-                InfoLine(subject, lessons.flatMap { it.classIds }.mapNotNull { tt.classes[it]?.short }.distinct().sorted().joinToString(", "))
-            }
-            .sortedBy { it.label }
-
-    /** Teachers of the class, per subject. */
-    private fun classInfo(tt: Timetable, classId: String, mapper: LessonItemMapper): List<InfoLine> =
-        tt.lessonsForClass(classId)
-            .groupBy { tt.subjects[it.subjectId]?.short.orEmpty() }
-            .map { (subject, lessons) ->
-                InfoLine(mapper.subjectName(subject), lessons.flatMap { it.teacherIds }.mapNotNull { tt.teachers[it]?.short }.distinct().sorted().joinToString(", "))
-            }
-            .sortedBy { it.label }
 }

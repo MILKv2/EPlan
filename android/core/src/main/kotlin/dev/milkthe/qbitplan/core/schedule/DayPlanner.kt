@@ -87,22 +87,36 @@ class DayPlanner(private val tt: Timetable) {
         return merge(slots)
     }
 
+    /**
+     * Every teaching room on lesson [period]: who uses it after changes (class shorts),
+     * or that it is listed as unavailable. Sorted by room short.
+     */
+    fun classroomOccupancy(
+        date: LocalDate,
+        period: Int,
+        substitutions: DaySubstitutions?,
+        weekIndex: Int? = null,
+    ): List<RoomOccupancy> {
+        val usedBy = HashMap<String, MutableSet<String>>()
+        allSlots(date, substitutions, weekIndex)
+            .filter { it.period == period && it.status.takesPlace }
+            .forEach { slot -> slot.classroom?.new.splitRooms().forEach { usedBy.getOrPut(it) { linkedSetOf() } += slot.classNames } }
+        val unavailable = substitutions?.unavailableClassrooms.orEmpty()
+            .filter { it.periods == null || period in it.periods }
+            .map { it.name }
+            .toSet()
+        return teachingRooms.map { room ->
+            RoomOccupancy(room, usedBy[room.short].orEmpty().toList(), unavailable = room.short in unavailable)
+        }
+    }
+
     /** Teaching rooms with no lesson after changes and not listed as unavailable. */
     fun freeClassrooms(
         date: LocalDate,
         period: Int,
         substitutions: DaySubstitutions?,
         weekIndex: Int? = null,
-    ): List<Classroom> {
-        val occupied = allSlots(date, substitutions, weekIndex)
-            .filter { it.period == period && it.status.takesPlace }
-            .flatMap { it.classroom?.new.splitRooms() }
-            .toMutableSet()
-        substitutions?.unavailableClassrooms.orEmpty()
-            .filter { it.periods == null || period in it.periods }
-            .mapTo(occupied) { it.name }
-        return teachingRooms.filter { it.short !in occupied }
-    }
+    ): List<Classroom> = classroomOccupancy(date, period, substitutions, weekIndex).filter { it.isFree }.map { it.room }
 
     private data class Slot(
         val period: Int,
@@ -334,6 +348,10 @@ class DayPlanner(private val tt: Timetable) {
 
     private fun String?.splitRooms(): List<String> =
         this?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+}
+
+data class RoomOccupancy(val room: Classroom, val classNames: List<String>, val unavailable: Boolean) {
+    val isFree: Boolean get() = classNames.isEmpty() && !unavailable
 }
 
 /** 0 = Monday … 6 = Sunday. */
