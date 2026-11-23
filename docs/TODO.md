@@ -20,6 +20,7 @@ Living list of what's left before the stable release. Remove this file during th
 - [ ] Onboarding/"Zmień" flow rework: step counter is wrong (shows "2 z 2" while more steps follow; class and groups share number 2); compute the real step list (role, class, groups if any, notifications if not allowed) and reuse it for editing the profile from Settings
 - [ ] Teacher step with the keyboard open: grid shrinks to a strip and the name suggestions card collapses to a thin line; rethink the layout (e.g. name entry as its own step or sheet)
 - [ ] Plan block for a cancelled group lesson repeats the group name as a chip (e.g. "Religia · Religia"); hide the chip when it equals the subject
+- [ ] Sync line ("Zsynchronizowano …") shows the same grey box on tap as the bottom bar did; check other custom clickables (chips, tiles, rows) for it too
 - [ ] Review guessed group section labels (EduPage divisions have no names) and subject names; long ones (e.g. PiKUA) keep the short
 
 ## Before stable
