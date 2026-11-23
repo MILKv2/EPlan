@@ -1,6 +1,16 @@
 package dev.milkthe.qbitplan.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.ui.unit.IntOffset
+import androidx.navigation.NavDestination
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -119,7 +129,15 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
         },
     ) { padding ->
         val openDetail = { kind: dev.milkthe.qbitplan.ui.search.DetailKind, id: String -> nav.navigate(DetailRoute(kind.name, id)) }
-        NavHost(nav, startDestination = PlanRoute, modifier = Modifier.padding(padding)) {
+        NavHost(
+            nav,
+            startDestination = PlanRoute,
+            modifier = Modifier.padding(padding),
+            enterTransition = { slideIn(towardsEnd = forward(initialState.destination, targetState.destination)) },
+            exitTransition = { slideOut(towardsEnd = forward(initialState.destination, targetState.destination)) },
+            popEnterTransition = { slideIn(towardsEnd = false) },
+            popExitTransition = { slideOut(towardsEnd = false) },
+        ) {
             composable<PlanRoute> { PlanScreen(onOpenProfile = { nav.openTab(SettingsRoute) }) }
             composable<SubstitutionsRoute> { SubstitutionsScreen() }
             composable<SearchRoute> { SearchScreen(onOpen = openDetail) }
@@ -131,12 +149,29 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
     }
 }
 
+private fun NavDestination.tabIndex(): Int = TopLevels.indexOfFirst { hasRoute(it.routeClass) }
+
+/** Tabs slide by their position in the bar; anything opened on top slides in from the end. */
+private fun forward(from: NavDestination, to: NavDestination): Boolean {
+    val a = from.tabIndex()
+    val b = to.tabIndex()
+    return a < 0 || b < 0 || b > a
+}
+
+private val SlideSpec = tween<IntOffset>(300, easing = FastOutSlowInEasing)
+
+private fun slideIn(towardsEnd: Boolean): EnterTransition =
+    slideInHorizontally(SlideSpec) { w -> if (towardsEnd) w / 4 else -w / 4 } + fadeIn(tween(220, delayMillis = 60))
+
+private fun slideOut(towardsEnd: Boolean): ExitTransition =
+    slideOutHorizontally(SlideSpec) { w -> if (towardsEnd) -w / 4 else w / 4 } + fadeOut(tween(140))
+
 @Composable
 private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, onClick: () -> Unit, modifier: Modifier) {
     val colors = QbitTheme.colors
     val pill by animateFloatAsState(if (selected) 1f else 0f, label = "navPill")
     Column(
-        modifier = modifier.fillMaxHeight().clickable(role = Role.Tab, onClick = onClick),
+        modifier = modifier.fillMaxHeight().clickable(interactionSource = null, indication = null, role = Role.Tab, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {

@@ -72,6 +72,7 @@ class SyncManager @Inject constructor(
     }
 
     private companion object {
-        val STALE_AFTER: Duration = Duration.ofMinutes(10)
+        // Short enough that opening the app shows fresh substitutions, long enough not to refetch on every app switch.
+        val STALE_AFTER: Duration = Duration.ofMinutes(2)
     }
 }
