@@ -1,21 +1,18 @@
 package dev.milkthe.qbitplan.data
 
-import dev.milkthe.qbitplan.core.edupage.EdupageApi
 import dev.milkthe.qbitplan.data.local.CachedEntry
-import dev.milkthe.qbitplan.data.local.ResponseCache
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.runTest
-import java.io.File
 import java.io.IOException
-import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.test.AfterTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -25,14 +22,15 @@ import kotlin.test.assertTrue
 
 class SchoolRepositoryTest {
 
-    private val fixtures = File(System.getProperty("fixtures.dir")!!)
-    private fun fixture(path: String) = File(fixtures, path).readText()
-
     private val zone = ZoneId.of("Europe/Warsaw")
     private val clock = MutableClock(Instant.parse("2026-11-23T09:00:00Z"), zone) // Monday
-    private val api = FakeApi()
-    private val cache = InMemoryCache()
-    private val repo = SchoolRepository(api, cache, clock)
+    private val api = FakeEdupageApi()
+    private val cache = InMemoryResponseCache()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
+    private val repo = SchoolRepository(api, cache, clock, scope)
+
+    @AfterTest
+    fun tearDown() = scope.cancel()
 
     @Test
     fun `refresh downloads versions, timetable and substitutions`() = runTest {
@@ -126,51 +124,5 @@ class SchoolRepositoryTest {
         assertEquals(listOf(LocalDate.of(2026, 11, 27), LocalDate.of(2026, 11, 30)), repo.defaultSubstitutionDates())
         clock.now = Instant.parse("2026-11-28T09:00:00Z") // Saturday
         assertEquals(listOf(LocalDate.of(2026, 11, 28), LocalDate.of(2026, 11, 30)), repo.defaultSubstitutionDates())
-    }
-
-    private inner class FakeApi : EdupageApi {
-        val versionCalls = mutableListOf<Int>()
-        val timetableCalls = mutableListOf<String>()
-        val substitutionCalls = mutableListOf<LocalDate>()
-        var defaultNum = "189"
-        var offline = false
-        var brokenTimetable = false
-        val emptyYears = mutableSetOf<Int>()
-
-        override suspend fun fetchTimetableVersions(schoolYear: Int): String {
-            if (offline) throw IOException("brak sieci")
-            versionCalls += schoolYear
-            val num = if (schoolYear in emptyYears) "" else defaultNum
-            return """{"r":{"regular":{"default_num":"$num","timetables":[]}}}"""
-        }
-
-        override suspend fun fetchRegularTimetable(ttNum: String): String {
-            if (offline) throw IOException("brak sieci")
-            timetableCalls += ttNum
-            return if (brokenTimetable) """{"r":{"oops":true}}""" else fixture("regulartt_189.json")
-        }
-
-        override suspend fun fetchSubstitutions(date: LocalDate): String {
-            if (offline) throw IOException("brak sieci")
-            substitutionCalls += date
-            val file = File(fixtures, "substitutions/$date.json")
-            return if (file.exists()) file.readText() else fixture("substitutions/2026-11-21.json")
-        }
-    }
-
-    private class InMemoryCache : ResponseCache {
-        private val entries = MutableStateFlow<Map<String, CachedEntry>>(emptyMap())
-        override fun observe(key: String): Flow<CachedEntry?> = entries.map { it[key] }
-        override suspend fun get(key: String) = entries.value[key]
-        override suspend fun put(entry: CachedEntry) = entries.update { it + (entry.key to entry) }
-        override suspend fun deleteWithPrefixBelow(prefix: String, keyBelow: String) =
-            entries.update { map -> map.filterKeys { !(it.startsWith(prefix) && it < keyBelow) } }
-    }
-
-    private class MutableClock(var now: Instant, private val zone: ZoneId) : Clock() {
-        fun advance(d: Duration) { now = now.plus(d) }
-        override fun instant(): Instant = now
-        override fun getZone(): ZoneId = zone
-        override fun withZone(zone: ZoneId): Clock = MutableClock(now, zone)
     }
 }

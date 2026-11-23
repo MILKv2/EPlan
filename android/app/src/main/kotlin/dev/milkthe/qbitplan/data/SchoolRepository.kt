@@ -9,21 +9,26 @@ import dev.milkthe.qbitplan.core.edupage.schoolYearOf
 import dev.milkthe.qbitplan.core.model.DaySubstitutions
 import dev.milkthe.qbitplan.core.model.Timetable
 import dev.milkthe.qbitplan.core.model.TimetableVersions
+import dev.milkthe.qbitplan.core.schedule.nextSchoolDay
 import dev.milkthe.qbitplan.data.local.CachedEntry
 import dev.milkthe.qbitplan.data.local.ResponseCache
+import dev.milkthe.qbitplan.di.ApplicationScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
-import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -43,18 +48,27 @@ class SchoolRepository @Inject constructor(
     private val api: EdupageApi,
     private val cache: ResponseCache,
     private val clock: Clock,
+    @ApplicationScope private val scope: CoroutineScope,
 ) {
     private val refreshMutex = Mutex()
 
+    // Parsed once and kept for the process lifetime: re-parsing ~680 KB per collector
+    // is noticeable on low-end phones.
     val timetable: Flow<Cached<Timetable>?> = cache.observe(KEY_TIMETABLE)
         .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
         .map { entry -> entry?.parseOrNull { RegularTimetableParser.parse(it.body, it.version.orEmpty()) } }
         .flowOn(Dispatchers.Default)
+        .shareIn(scope, SharingStarted.Lazily, replay = 1)
 
-    fun substitutions(date: LocalDate): Flow<Cached<DaySubstitutions>?> = cache.observe(substitutionsKey(date))
-        .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
-        .map { entry -> entry?.parseOrNull { SubstitutionsParser.parse(date, it.body) } }
-        .flowOn(Dispatchers.Default)
+    private val substitutionFlows = ConcurrentHashMap<LocalDate, Flow<Cached<DaySubstitutions>?>>()
+
+    fun substitutions(date: LocalDate): Flow<Cached<DaySubstitutions>?> = substitutionFlows.getOrPut(date) {
+        cache.observe(substitutionsKey(date))
+            .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
+            .map { entry -> entry?.parseOrNull { SubstitutionsParser.parse(date, it.body) } }
+            .flowOn(Dispatchers.Default)
+            .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+    }
 
     /** Versions are fetched on every refresh, so this is the last successful refresh. */
     val lastRefresh: Flow<Instant?> = cache.observe(KEY_VERSIONS).map { it?.fetchedAt }
@@ -116,9 +130,7 @@ class SchoolRepository @Inject constructor(
     /** Today and the next school day. */
     fun defaultSubstitutionDates(): List<LocalDate> {
         val today = LocalDate.now(clock)
-        var next = today.plusDays(1)
-        while (next.dayOfWeek == DayOfWeek.SATURDAY || next.dayOfWeek == DayOfWeek.SUNDAY) next = next.plusDays(1)
-        return listOf(today, next)
+        return listOf(today, nextSchoolDay(today))
     }
 
     private fun CachedEntry.isOlderThan(age: Duration) = fetchedAt.plus(age).isBefore(clock.instant())

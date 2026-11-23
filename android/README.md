@@ -14,8 +14,11 @@ core/   czysty Kotlin, bez Androida; testy na zwykłej JVM
   schedule/   DayPlanner: nakładanie zastępstw (uczeń, nauczyciel, sala,
               wolne sale), dzwonki (pasek „teraz”), lista nazwisk
 app/    aplikacja Android
-  data/       SchoolRepository (offline-first), cache Room, ustawienia DataStore
+  data/       SchoolRepository (offline-first), SyncManager, cache Room, ustawienia DataStore
   di/         moduły Hilt
+  ui/theme/   tokeny designu (kolory jasny/ciemny, promienie, kolory statusów) – podmiana wyglądu tutaj
+  ui/common/  wspólne komponenty (kafelek lekcji, pasek „teraz”, banery)
+  ui/<ekran>/ onboarding, plan, substitutions, search, settings (ViewModel + Compose)
 ```
 
 Szczegóły formatu danych: [`docs/edupage-api.md`](../docs/edupage-api.md).
@@ -28,7 +31,8 @@ Wymagania: JDK 17+ i Android SDK z platformą `android-37.2`
 
 ```bash
 ./gradlew :core:test                 # parsery i logika (fixtures z ../fixtures)
-./gradlew :app:testDebugUnitTest     # repozytorium (offline, cache)
+./gradlew :app:testDebugUnitTest     # repozytorium + render wszystkich ekranów (Robolectric)
+./gradlew :app:testDebugUnitTest -Proborazzi.record=true   # zrzuty ekranów → app/build/screenshots/
 ./gradlew :app:assembleDebug         # APK → app/build/outputs/apk/debug/
 
 # test na prawdziwym EduPage (wykrywa zmianę formatu po stronie szkoły)
