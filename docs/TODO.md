@@ -16,6 +16,10 @@ Living list of what's left before the stable release. Remove this file during th
 - [ ] Settings → profile "Zmień" should open group selection for the current class directly
 - [ ] Plan header chip (class + groups): open a dropdown with plan options instead of jumping to Settings; let it grow so text isn't cut ("F-infor…")
 - [ ] Plan: after the day's last lesson, open on the next school day by default
+- [ ] Detail screen (class/teacher/room plan): no animation when switching days or entering the screen; check every transition, not only tabs
+- [ ] Onboarding/"Zmień" flow rework: step counter is wrong (shows "2 z 2" while more steps follow; class and groups share number 2); compute the real step list (role, class, groups if any, notifications if not allowed) and reuse it for editing the profile from Settings
+- [ ] Teacher step with the keyboard open: grid shrinks to a strip and the name suggestions card collapses to a thin line; rethink the layout (e.g. name entry as its own step or sheet)
+- [ ] Plan block for a cancelled group lesson repeats the group name as a chip (e.g. "Religia · Religia"); hide the chip when it equals the subject
 - [ ] Review guessed group section labels (EduPage divisions have no names) and subject names; long ones (e.g. PiKUA) keep the short
 
 ## Before stable
