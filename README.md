@@ -32,12 +32,13 @@ fixtures/           zapisane odpowiedzi EduPage do testów (apka + worker)
 
 ## Budowanie
 
-Wymagania: JDK 17 i Android SDK (Android Studio albo `sdkmanager`).
+Wymagania: JDK 17+ i Android SDK z platformą `android-37.2` (Android Studio
+albo `sdkmanager`). Szczegóły: [`android/README.md`](android/README.md).
 
 ```bash
 cd android
-./gradlew testDebugUnitTest   # testy jednostkowe (parser, nakładanie zastępstw)
-./gradlew assembleDebug       # APK debug → app/build/outputs/apk/debug/
+./gradlew :core:test :app:testDebugUnitTest   # testy jednostkowe
+./gradlew :app:assembleDebug                  # APK debug → app/build/outputs/apk/debug/
 ```
 
 ### Wydanie

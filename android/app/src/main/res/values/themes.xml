@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Motyw okna przed załadowaniem Compose; właściwy wygląd ustala AppTheme w kodzie. -->
+    <style name="Theme.QbitPlan" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>

@@ -11,7 +11,9 @@ pobrane 2026-11-23. Korzystają z nich testy apki (`android/`) i workera
 | `substitutions/2026-11-23.json` | `getSubstViewerDayDataHtml` | zwykły dzień |
 | `substitutions/2026-11-24.json` | 〃 | przeniesienia (`Moved to/from period`), odwołania, grupy |
 | `substitutions/2026-11-25.json` | 〃 | brak zastępcy (samo `<s>Nauczyciel</s>`) |
+| `substitutions/2026-11-20.json` | 〃 | „(Bez klasy 2bdt)”, kilka grup naraz |
 | `substitutions/2026-11-21.json` | 〃 | sobota: „W tym dniu nie ma żadnych zastępstw.” |
+| `currenttt/<klasa>_2026-11-23_27.json` | `curentttGetData` (plan bieżący, tydzień) | **wyrocznia** do testów nakładania zastępstw (etap 3); apka z tego endpointu nie korzysta |
 | `substitutions/2026-10-15.json` | 〃 | „Klasy nieobecne”, `Cały dzień`, `Nieobecność` (starsza wersja planu) |
 | `substitutions/2026-09-10.json` | 〃 | zakresy lekcji `3 - 4`, `(0 - 4)` w nagłówku (starsza wersja planu) |
 

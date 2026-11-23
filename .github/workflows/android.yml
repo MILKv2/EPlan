@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -38,7 +38,7 @@ jobs:
           QBIT_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           QBIT_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           QBIT_VERSION_NAME: ${{ github.ref_name }}
-        run: ./gradlew --no-daemon testDebugUnitTest assembleRelease
+        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:assembleRelease
 
       - name: Nazwij APK
         run: cp app/build/outputs/apk/release/app-release.apk "QbitPlan-${GITHUB_REF_NAME}.apk"

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Prosta siatka planu (3×3) w strefie bezpiecznej 66dp ikony adaptacyjnej. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M36,36h10v10h-10z M49,36h10v10h-10z M62,36h10v10h-10z M36,49h10v10h-10z M49,49h10v10h-10z M62,49h10v10h-10z M36,62h10v10h-10z M49,62h10v10h-10z" />
+    <path
+        android:fillColor="#F5A524"
+        android:pathData="M62,62h10v10h-10z" />
+</vector>
