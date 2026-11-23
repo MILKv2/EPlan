@@ -1,0 +1,43 @@
+# ── Sekrety (NIGDY do repo) ──────────────────────────────────────────
+local.properties
+keystore.properties
+*.jks
+*.keystore
+!debug.keystore
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+# klucze konta serwisowego Google/Firebase (FCM)
+*service-account*.json
+*serviceAccount*.json
+firebase-adminsdk*.json
+# google-services.json MOŻE być w repo (to nie jest sekret)
+
+# ── Android / Gradle ─────────────────────────────────────────────────
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+*.ap_
+*.dex
+output-metadata.json
+
+# ── IDE ──────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+.kotlin/
+
+# ── Node / Cloudflare Worker ─────────────────────────────────────────
+node_modules/
+.wrangler/
+dist/
+npm-debug.log*
+
+# ── System ───────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
