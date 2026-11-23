@@ -166,6 +166,7 @@ class DayPlannerTest {
         val free4 = planner.freeClassrooms(tuesday, 4, s).map { it.short }
         assertTrue("A10" in free4, "A10 freed by a room change")
         assertTrue("B23" !in free4, "B23 taken by a substitution")
+        assertTrue("Brama Gł." !in free4 && "Park. B" !in free4, "duty spots are not classrooms")
         assertTrue("A24" !in planner.freeClassrooms(tuesday, 2, s).map { it.short }, "A24 unavailable in period 2")
         assertTrue(planner.freeClassrooms(tuesday, 4, null).map { it.short }.let { "A10" !in it && "B23" in it })
     }

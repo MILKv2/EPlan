@@ -23,6 +23,12 @@ import java.time.LocalDate
  */
 class DayPlanner(private val tt: Timetable) {
 
+    // The classrooms table also lists duty spots (gates, car parks); only rooms with lessons count.
+    private val teachingRooms by lazy {
+        val used = tt.lessons.flatMap { it.classroomIds }.toSet()
+        tt.classrooms.values.filter { it.id in used }.sortedBy { it.short }
+    }
+
     /** [selectedGroupNames] `null` = all groups of the class. */
     fun forClass(
         classId: String,
@@ -81,7 +87,7 @@ class DayPlanner(private val tt: Timetable) {
         return merge(slots)
     }
 
-    /** Rooms with no lesson after changes and not listed as unavailable. */
+    /** Teaching rooms with no lesson after changes and not listed as unavailable. */
     fun freeClassrooms(
         date: LocalDate,
         period: Int,
@@ -95,7 +101,7 @@ class DayPlanner(private val tt: Timetable) {
         substitutions?.unavailableClassrooms.orEmpty()
             .filter { it.periods == null || period in it.periods }
             .mapTo(occupied) { it.name }
-        return tt.classrooms.values.filter { it.short !in occupied }.sortedBy { it.short }
+        return teachingRooms.filter { it.short !in occupied }
     }
 
     private data class Slot(
