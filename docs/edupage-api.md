@@ -177,9 +177,23 @@ planie stałym.
 
 ### Dopasowanie wiersza zastępstwa do planu stałego
 
-Klucz: `klasa (short)` + `lekcja` + `przedmiot (stary short)`, opcjonalnie
-`grupy (nazwy)`. Nauczyciela z zastępstw (pełne nazwisko) łączymy ze skrótem
-z planu przez parowanie ustawione przez użytkownika w onboardingu.
+Implementacja: `android/core/.../schedule/DayPlanner.kt`, zweryfikowana
+z planem bieżącym (pkt 4) dla wszystkich klas.
+
+1. Lekcje klasy w danym dniu rozbijamy na pojedyncze godziny, bo
+   zastępstwo może dotyczyć części lekcji (PEiE 4-5 → inf na 4, jang na 5).
+2. Wiersz dopasowujemy po: klasie (`short`), godzinie, **starym** skrócie
+   przedmiotu i grupach.
+3. **Grupy w wierszu to nazwy grup CAŁEJ lekcji łączonej**, także z innych
+   klas. Np. dla 4fl „Dziew1, Dziew2: WF” to lekcja 4bl/Dziew1 + 4fl/Dziew2,
+   a nie lekcja 4fl/Dziew1. Gdy pasuje kilka lekcji, wygrywa ta, której
+   zbiór grup (ze wszystkich klas) jest dokładnie równy grupom z wiersza.
+4. Niedopasowany wiersz staje się osobnym kafelkiem (nic nie ginie).
+5. „Przeniesiona tutaj” bierze salę i grupy z lekcji źródłowej
+   (`Moved from period: N`).
+
+Nauczyciela z zastępstw (pełne nazwisko) łączymy ze skrótem z planu przez
+parowanie ustawione przez użytkownika w onboardingu.
 
 ## 4. Plan bieżący: `curentttGetData` (UI wyłączone, endpoint działa)
 
@@ -199,5 +213,14 @@ classids[], groupnames[], teacherids[], classroomids[], durationperiods?,
 changed?: true, removed?: true}`. Zastępstwa są już nałożone, a nauczyciele
 zastępujący mają ID (np. Anna Grzebień = `-161` = `AG`).
 
-Na razie **nie** używamy go w apce (szkoła wyłączyła ten widok, więc może
-przestać działać). Przydaje się jako wyrocznia w testach nakładania zastępstw.
+Uwagi:
+- `groupnames` to nazwy grup całej lekcji łączonej (bez rozróżnienia klas);
+- odwołane i przeniesione stąd: `removed: true`; zmienione i przeniesione
+  tutaj: `changed: true`; zastąpiona część lekcji wielogodzinnej znika,
+  a w jej miejscu pojawiają się jednogodzinne karty `changed`;
+- `r.week_name` = „Tydzień A/B” (szkoła numeruje tygodnie, choć wszystkie
+  lekcje są w obu).
+
+Apka go **nie** używa (szkoła wyłączyła ten widok, więc może przestać
+działać). Służy jako wyrocznia w testach: `CurrentTimetableOracleTest`
+(fixtures) i `LiveOracleTest` (wszystkie klasy, na żywo).

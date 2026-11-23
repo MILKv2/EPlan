@@ -11,6 +11,8 @@ core/   czysty Kotlin, bez Androida; testy na zwykłej JVM
   model/      Timetable, Substitutions: modele domenowe
   edupage/    EdupageApi (OkHttp), parsery: wersje planu, plan stały,
               zastępstwa (HTML → Jsoup)
+  schedule/   DayPlanner: nakładanie zastępstw (uczeń, nauczyciel, sala,
+              wolne sale), dzwonki (pasek „teraz”), lista nazwisk
 app/    aplikacja Android
   data/       SchoolRepository (offline-first), cache Room, ustawienia DataStore
   di/         moduły Hilt
@@ -31,6 +33,9 @@ Wymagania: JDK 17+ i Android SDK z platformą `android-37.2`
 
 # test na prawdziwym EduPage (wykrywa zmianę formatu po stronie szkoły)
 QBIT_LIVE=1 ./gradlew :core:test --tests '*LiveEdupageTest*' --rerun
+
+# wyrocznia na żywo: DayPlanner vs plan bieżący EduPage, wszystkie klasy
+QBIT_LIVE=1 ./gradlew :core:test --tests '*LiveOracleTest*' --rerun -i
 ```
 
 ## Podpis wydania
