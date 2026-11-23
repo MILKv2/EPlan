@@ -20,6 +20,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
@@ -82,20 +84,30 @@ class OnboardingViewModel @Inject constructor(
         knownTeacherNames(days.filterNotNull().map { it.value })
     }
 
-    val state: StateFlow<OnboardingState> = combine(repository.timetable, sync.state, selection, names) { tt, s, sel, allNames ->
-        val timetable = tt?.value
-        val classes = timetable?.classes?.values?.sortedBy { it.short }?.map { Option(it.id, it.short) }.orEmpty()
+    private class Catalog(val timetable: Timetable, val classes: List<Option>, val teachers: List<Option>)
+
+    // Built once per timetable version, not on every keystroke.
+    private val catalog: Flow<Catalog?> = repository.timetable
+        .map { tt -> tt?.value?.let { Catalog(it, classOptions(it), teacherOptions(it)) } }
+        .flowOn(Dispatchers.Default)
+
+    private val divisions: Flow<List<Division>> = combine(repository.timetable, selection.map { it.classId }.distinctUntilChanged()) { tt, classId ->
+        if (tt != null && classId != null) divisionsOf(tt.value, classId) else emptyList()
+    }.flowOn(Dispatchers.Default)
+
+    val state: StateFlow<OnboardingState> = combine(catalog, sync.state, selection, names, divisions) { cat, s, sel, allNames, divs ->
         val cq = sel.classQuery.trim().lowercase(PolishLocale)
-        val teachers = timetable?.let { teacherOptions(it) }.orEmpty()
         val tq = sel.teacherQuery.trim().lowercase(PolishLocale)
+        val classes = cat?.classes.orEmpty()
+        val teachers = cat?.teachers.orEmpty()
         OnboardingState(
             selection = sel,
-            hasTimetable = timetable != null,
+            hasTimetable = cat != null,
             failed = s.error != null && !s.refreshing,
             classCount = classes.size,
-            classes = classes.filter { cq.isEmpty() || cq in it.title.lowercase(PolishLocale) },
-            divisions = if (timetable != null && sel.classId != null) divisionsOf(timetable, sel.classId) else emptyList(),
-            teachers = teachers.filter { tq.isEmpty() || tq in it.title.lowercase(PolishLocale) || tq in it.subtitle.orEmpty().lowercase(PolishLocale) },
+            classes = if (cq.isEmpty()) classes else classes.filter { cq in it.title.lowercase(PolishLocale) },
+            divisions = divs,
+            teachers = if (tq.isEmpty()) teachers else teachers.filter { tq in it.title.lowercase(PolishLocale) || tq in it.subtitle.orEmpty().lowercase(PolishLocale) },
             suggestedNames = suggestions(allNames, teachers.find { it.id == sel.teacherId }?.title),
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OnboardingState())
@@ -125,15 +137,21 @@ class OnboardingViewModel @Inject constructor(
 
     fun setTypedName(name: String) = selection.update { it.copy(typedName = name, pickedName = null) }
 
-    fun next() {
+    /** [notificationsAllowed]: the permission is already granted, so the last step has nothing to ask. */
+    fun next(notificationsAllowed: Boolean = false) {
+        viewModelScope.launch { advance(notificationsAllowed) }
+    }
+
+    private suspend fun advance(notificationsAllowed: Boolean) {
         val sel = selection.value
         val next = when (sel.step) {
             OnboardingStep.ROLE -> if (sel.mode == UserMode.STUDENT) OnboardingStep.CLASS else OnboardingStep.TEACHER
-            OnboardingStep.CLASS -> if (state.value.divisions.isEmpty()) OnboardingStep.NOTIFICATIONS else OnboardingStep.GROUPS
+            OnboardingStep.CLASS -> if (divisions.first().isEmpty()) OnboardingStep.NOTIFICATIONS else OnboardingStep.GROUPS
             OnboardingStep.GROUPS, OnboardingStep.TEACHER -> OnboardingStep.NOTIFICATIONS
             OnboardingStep.NOTIFICATIONS -> return
         }
-        selection.update { it.copy(step = next) }
+        if (next == OnboardingStep.NOTIFICATIONS && notificationsAllowed) finish(notifications = true)
+        else selection.update { it.copy(step = next) }
     }
 
     /** Returns false at the first step (let the system handle back). */
@@ -170,6 +188,9 @@ class OnboardingViewModel @Inject constructor(
             }
         }
     }
+
+    private fun classOptions(tt: Timetable): List<Option> =
+        tt.classes.values.sortedBy { it.short }.map { Option(it.id, it.short) }
 
     /** Shorts aren't unique, so each option carries the main subject to tell them apart. */
     private fun teacherOptions(tt: Timetable): List<Option> {

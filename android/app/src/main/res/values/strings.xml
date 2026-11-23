@@ -163,7 +163,7 @@
     <string name="about_oss_desc">Biblioteki użyte w aplikacji</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_step">%1$d z 3</string>
+    <string name="onboarding_step">%1$d z %2$d</string>
     <string name="onboarding_role_title">Kim jesteś?</string>
     <string name="onboarding_role_text">Dobierzemy plan i powiadomienia. Zmienisz to później w ustawieniach.</string>
     <string name="mode_student">Uczeń</string>
@@ -180,6 +180,7 @@
     <string name="division_english">Język angielski</string>
     <string name="division_german">Język niemiecki</string>
     <string name="division_language">Drugi język</string>
+    <string name="division_profession">Zawód</string>
     <string name="division_pe">Wychowanie fizyczne</string>
     <string name="division_religion">Religia / etyka</string>
     <string name="onboarding_teacher_title">Twój skrót</string>
