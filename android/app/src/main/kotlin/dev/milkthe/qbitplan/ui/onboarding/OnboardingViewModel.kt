@@ -29,33 +29,41 @@ import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
-enum class OnboardingStep { MODE, CLASS, GROUPS, TEACHER, TEACHER_NAME }
+enum class OnboardingStep(val number: Int) { ROLE(1), CLASS(2), GROUPS(2), TEACHER(2), NOTIFICATIONS(3) }
 
 @Immutable
 data class Option(val id: String, val title: String, val subtitle: String? = null)
 
 @Immutable
 data class Selection(
-    val step: OnboardingStep = OnboardingStep.MODE,
-    val mode: UserMode? = null,
+    val step: OnboardingStep = OnboardingStep.ROLE,
+    val mode: UserMode = UserMode.STUDENT,
     val classId: String? = null,
+    val classQuery: String = "",
     val groups: Map<String, String?> = emptyMap(),
     val teacherId: String? = null,
     val teacherQuery: String = "",
-    val fullName: String = "",
-)
+    /** Picked suggestion; `null` = typing the name. */
+    val pickedName: String? = null,
+    val typedName: String = "",
+) {
+    val fullName: String get() = (pickedName ?: typedName).trim()
+}
 
 @Immutable
 data class OnboardingState(
     val selection: Selection = Selection(),
     val hasTimetable: Boolean = false,
-    val refreshing: Boolean = false,
     val failed: Boolean = false,
+    val classCount: Int = 0,
     val classes: List<Option> = emptyList(),
     val divisions: List<Division> = emptyList(),
     val teachers: List<Option> = emptyList(),
-    val names: List<String> = emptyList(),
-)
+    val suggestedNames: List<String> = emptyList(),
+) {
+    val className: String? get() = classes.find { it.id == selection.classId }?.title
+    val teacherShort: String? get() = teachers.find { it.id == selection.teacherId }?.title
+}
 
 @HiltViewModel
 class OnboardingViewModel @Inject constructor(
@@ -76,15 +84,19 @@ class OnboardingViewModel @Inject constructor(
 
     val state: StateFlow<OnboardingState> = combine(repository.timetable, sync.state, selection, names) { tt, s, sel, allNames ->
         val timetable = tt?.value
+        val classes = timetable?.classes?.values?.sortedBy { it.short }?.map { Option(it.id, it.short) }.orEmpty()
+        val cq = sel.classQuery.trim().lowercase(PolishLocale)
+        val teachers = timetable?.let { teacherOptions(it) }.orEmpty()
+        val tq = sel.teacherQuery.trim().lowercase(PolishLocale)
         OnboardingState(
             selection = sel,
             hasTimetable = timetable != null,
-            refreshing = s.refreshing,
-            failed = s.error != null,
-            classes = timetable?.classes?.values?.sortedBy { it.short }?.map { Option(it.id, it.short) }.orEmpty(),
+            failed = s.error != null && !s.refreshing,
+            classCount = classes.size,
+            classes = classes.filter { cq.isEmpty() || cq in it.title.lowercase(PolishLocale) },
             divisions = if (timetable != null && sel.classId != null) divisionsOf(timetable, sel.classId) else emptyList(),
-            teachers = timetable?.let { teacherOptions(it, sel.teacherQuery) }.orEmpty(),
-            names = rankNames(allNames, timetable?.teachers?.get(sel.teacherId)?.short),
+            teachers = teachers.filter { tq.isEmpty() || tq in it.title.lowercase(PolishLocale) || tq in it.subtitle.orEmpty().lowercase(PolishLocale) },
+            suggestedNames = suggestions(allNames, teachers.find { it.id == sel.teacherId }?.title),
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OnboardingState())
 
@@ -92,56 +104,60 @@ class OnboardingViewModel @Inject constructor(
         viewModelScope.launch {
             if (repository.timetable.first() == null) sync.refresh()
         }
+        nameDays.forEach(sync::ensureSubstitutions)
     }
 
     fun retry() = sync.refresh()
 
-    fun chooseMode(mode: UserMode) = selection.update {
-        it.copy(mode = mode, step = if (mode == UserMode.STUDENT) OnboardingStep.CLASS else OnboardingStep.TEACHER)
-    }
+    fun chooseMode(mode: UserMode) = selection.update { it.copy(mode = mode) }
 
     fun chooseClass(id: String) = selection.update { it.copy(classId = id, groups = emptyMap()) }
 
-    fun setGroups(groups: Map<String, String?>) = selection.update { it.copy(groups = groups) }
+    fun setClassQuery(query: String) = selection.update { it.copy(classQuery = query) }
 
-    fun chooseTeacher(id: String) = selection.update { it.copy(teacherId = id) }
+    fun setGroup(division: String, name: String?) = selection.update { it.copy(groups = it.groups + (division to name)) }
+
+    fun chooseTeacher(id: String) = selection.update { it.copy(teacherId = id, pickedName = null) }
 
     fun setTeacherQuery(query: String) = selection.update { it.copy(teacherQuery = query) }
 
-    fun setFullName(name: String) = selection.update { it.copy(fullName = name) }
+    fun pickName(name: String?) = selection.update { it.copy(pickedName = name) }
+
+    fun setTypedName(name: String) = selection.update { it.copy(typedName = name, pickedName = null) }
 
     fun next() {
         val sel = selection.value
-        when (sel.step) {
-            OnboardingStep.CLASS -> if (state.value.divisions.isEmpty()) finish() else go(OnboardingStep.GROUPS)
-            OnboardingStep.GROUPS -> finish()
-            OnboardingStep.TEACHER -> {
-                nameDays.forEach(sync::ensureSubstitutions)
-                go(OnboardingStep.TEACHER_NAME)
-            }
-            OnboardingStep.TEACHER_NAME -> finish()
-            OnboardingStep.MODE -> Unit
+        val next = when (sel.step) {
+            OnboardingStep.ROLE -> if (sel.mode == UserMode.STUDENT) OnboardingStep.CLASS else OnboardingStep.TEACHER
+            OnboardingStep.CLASS -> if (state.value.divisions.isEmpty()) OnboardingStep.NOTIFICATIONS else OnboardingStep.GROUPS
+            OnboardingStep.GROUPS, OnboardingStep.TEACHER -> OnboardingStep.NOTIFICATIONS
+            OnboardingStep.NOTIFICATIONS -> return
         }
+        selection.update { it.copy(step = next) }
     }
 
-    /** Returns false when already at the first step (let the system handle back). */
+    /** Returns false at the first step (let the system handle back). */
     fun back(): Boolean {
-        val previous = when (selection.value.step) {
-            OnboardingStep.MODE -> return false
-            OnboardingStep.CLASS, OnboardingStep.TEACHER -> OnboardingStep.MODE
+        val sel = selection.value
+        val previous = when (sel.step) {
+            OnboardingStep.ROLE -> return false
+            OnboardingStep.CLASS, OnboardingStep.TEACHER -> OnboardingStep.ROLE
             OnboardingStep.GROUPS -> OnboardingStep.CLASS
-            OnboardingStep.TEACHER_NAME -> OnboardingStep.TEACHER
+            OnboardingStep.NOTIFICATIONS -> when {
+                sel.mode == UserMode.TEACHER -> OnboardingStep.TEACHER
+                state.value.divisions.isEmpty() -> OnboardingStep.CLASS
+                else -> OnboardingStep.GROUPS
+            }
         }
-        go(previous)
+        selection.update { it.copy(step = previous) }
         return true
     }
 
-    private fun go(step: OnboardingStep) = selection.update { it.copy(step = step) }
-
-    private fun finish() {
+    fun finish(notifications: Boolean) {
         val sel = selection.value
         viewModelScope.launch {
             val tt = repository.timetable.first()?.value ?: return@launch
+            preferences.setNotificationsEnabled(notifications)
             when (sel.mode) {
                 UserMode.STUDENT -> {
                     val cls = sel.classId?.let { tt.classes[it] } ?: return@launch
@@ -151,30 +167,24 @@ class OnboardingViewModel @Inject constructor(
                     val teacher = sel.teacherId?.let { tt.teachers[it] } ?: return@launch
                     preferences.setTeacher(teacher.id, teacher.short, sel.fullName)
                 }
-                null -> Unit
             }
         }
     }
 
-    /** Shorts aren't unique, so each option lists subjects and classes to tell them apart. */
-    private fun teacherOptions(tt: Timetable, query: String): List<Option> {
-        val needle = query.trim().lowercase(PolishLocale)
+    /** Shorts aren't unique, so each option carries the main subject to tell them apart. */
+    private fun teacherOptions(tt: Timetable): List<Option> {
+        val duplicates = tt.teachers.values.groupingBy { it.short }.eachCount().filterValues { it > 1 }.keys
         return tt.teachers.values.map { teacher ->
             val lessons = tt.lessonsForTeacher(teacher.id)
-            val subjects = lessons.mapNotNull { tt.subjects[it.subjectId]?.short }.byFrequency().take(4)
-            val classes = lessons.flatMap { it.classIds }.mapNotNull { tt.classes[it]?.short }.distinct().sorted().take(6)
-            Option(teacher.id, teacher.short, listOf(subjects.joinToString(", "), classes.joinToString(", ")).filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { null })
-        }
-            .filter { needle.isEmpty() || needle in it.title.lowercase(PolishLocale) || needle in it.subtitle.orEmpty().lowercase(PolishLocale) }
-            .sortedWith(compareBy({ it.title.lowercase(PolishLocale) }, { it.subtitle }))
+            val subjects = lessons.mapNotNull { tt.subjects[it.subjectId]?.short }.byFrequency()
+            Option(teacher.id, teacher.short, if (teacher.short in duplicates) subjects.firstOrNull() else null)
+        }.sortedWith(compareBy({ it.title.lowercase(PolishLocale) }, { it.subtitle }))
     }
 
-    /** Names whose initials match the chosen short (e.g. "KW" ↔ Wojciech Książkiewicz) go first. */
-    private fun rankNames(names: List<String>, short: String?): List<String> {
-        if (short == null) return names
+    /** Names whose initials match the chosen short (e.g. "KW" ↔ Wojciech Książkiewicz). */
+    private fun suggestions(names: List<String>, short: String?): List<String> {
+        if (short == null) return emptyList()
         val letters = short.filter { it.isUpperCase() }.toSet()
-        return names.sortedByDescending { name ->
-            name.split(' ', '-').mapNotNull { it.firstOrNull()?.uppercaseChar() }.toSet() == letters
-        }
+        return names.filter { name -> name.split(' ', '-').mapNotNull { it.firstOrNull()?.uppercaseChar() }.toSet() == letters }.take(3)
     }
 }

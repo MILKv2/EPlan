@@ -5,18 +5,22 @@
     <!-- Common -->
     <string name="back">Wstecz</string>
     <string name="next">Dalej</string>
-    <string name="ok">OK</string>
-    <string name="cancel">Anuluj</string>
-    <string name="save">Zapisz</string>
+    <string name="next_with">Dalej · %1$s</string>
     <string name="clear">Wyczyść</string>
     <string name="retry">Spróbuj ponownie</string>
+    <string name="refresh">Odśwież</string>
     <string name="today">Dziś</string>
     <string name="tomorrow">Jutro</string>
-    <string name="whole_day">Cały dzień</string>
-    <string name="no_data">Brak danych. Sprawdź połączenie z internetem.</string>
-    <string name="data_fetched_at">Pobrano: %1$s</string>
-    <string name="offline_banner">Brak połączenia – dane z %1$s</string>
-    <string name="offline_banner_no_data">Brak połączenia</string>
+    <string name="error_title">Nie udało się pobrać planu</string>
+    <string name="error_text">Sprawdź internet albo spróbuj za chwilę. EduPage mogło nie odpowiedzieć.</string>
+
+    <!-- Sync line -->
+    <string name="sync_done">Zsynchronizowano %1$s</string>
+    <string name="sync_running">Synchronizuję…</string>
+    <string name="sync_loading">Pobieram plan…</string>
+    <string name="sync_offline">Offline · plan z %1$s</string>
+    <string name="sync_offline_no_data">Offline</string>
+    <string name="sync_never">Jeszcze nie pobrano</string>
 
     <!-- Tabs -->
     <string name="tab_plan">Plan</string>
@@ -24,112 +28,175 @@
     <string name="tab_search">Szukaj</string>
     <string name="tab_settings">Ustawienia</string>
 
-    <!-- Lesson statuses -->
-    <string name="status_changed">Zmiana</string>
-    <string name="status_no_substitute">Brak zastępcy</string>
-    <string name="status_cancelled">Odwołana</string>
-    <string name="status_moved_away">Przeniesiona</string>
-    <string name="status_moved_here">Przeniesiona tu</string>
-    <string name="status_class_absent">Klasa nieobecna</string>
+    <!-- Lesson tags and notes -->
+    <string name="tag_changed">zmiana</string>
+    <string name="tag_cancelled">odwołana</string>
+    <string name="tag_moved">przeniesiona</string>
+    <string name="tag_no_substitute">brak zastępcy</string>
+    <string name="tag_class_absent">klasa nieobecna</string>
+    <string name="tag_covering">zastępstwo</string>
+    <string name="tag_minutes_left">jeszcze %1$d min</string>
     <string name="lesson_no_teacher">brak</string>
-    <string name="lesson_instead_of">zamiast</string>
-    <string name="lesson_moved_to">Przeniesiona na lekcję %1$d</string>
-    <string name="lesson_moved_from">Przeniesiona z lekcji %1$d</string>
+    <string name="note_moved_from">z lekcji %1$d</string>
+    <string name="note_moved_to">na lekcję %1$d</string>
+    <string name="note_covering">za %1$s</string>
 
     <!-- Plan -->
-    <string name="plan_day">Dzień</string>
-    <string name="plan_week">Tydzień</string>
-    <string name="plan_my_groups">Moje grupy</string>
-    <string name="plan_this_week">Ten tydzień</string>
-    <string name="plan_next_week">Następny tydzień</string>
-    <string name="plan_no_lessons">Brak lekcji</string>
-    <string name="plan_substitutions_missing">Zastępstwa na ten dzień nie są jeszcze dostępne – pokazuję plan stały.</string>
-
-    <!-- Now bar -->
-    <string name="now_lesson">Teraz: %1$s</string>
-    <string name="now_free_period">Teraz: okienko</string>
-    <string name="now_break">Przerwa</string>
-    <string name="now_before_school">Przed lekcjami</string>
-    <string name="now_next">Następnie: %1$s</string>
-    <string name="now_until_bell">do dzwonka</string>
+    <string name="plan_whole_class">cała klasa</string>
+    <string name="plan_change_profile">Zmień klasę i grupy</string>
+    <string name="plan_show_week">Pokaż tydzień</string>
+    <string name="plan_show_day">Pokaż dzień</string>
+    <string name="plan_no_lessons_title">Brak lekcji</string>
+    <string name="plan_no_lessons_text">Tego dnia nie masz lekcji.</string>
+    <string name="plan_weekend_title">Weekend, wolne</string>
+    <string name="plan_weekend_text">Najbliższe lekcje w poniedziałek %1$s.</string>
+    <string name="plan_show_monday">Pokaż poniedziałek</string>
 
     <!-- Substitutions -->
-    <string name="substitutions_filter">Filtruj: klasa, nauczyciel, przedmiot…</string>
-    <string name="substitutions_absent_teachers">Nieobecni nauczyciele</string>
-    <string name="substitutions_unavailable_rooms">Niedostępne sale</string>
-    <string name="substitutions_absent_classes">Nieobecne klasy</string>
-    <string name="substitutions_mine">Moje</string>
-    <string name="substitutions_missing">Nie udało się pobrać zastępstw na ten dzień.</string>
-    <string name="substitutions_without_classes">Bez klasy %1$s</string>
+    <string name="calendar_open">Wybierz dzień z kalendarza</string>
+    <string name="calendar_title">Wybierz dzień</string>
+    <string name="calendar_has_changes">są zastępstwa</string>
+    <string name="calendar_prev">Poprzedni miesiąc</string>
+    <string name="calendar_next">Następny miesiąc</string>
+    <string name="absent_title">Nieobecni</string>
+    <string name="absent_none">Wszyscy obecni</string>
+    <string name="absent_teachers">Nauczyciele</string>
+    <string name="absent_rooms">Sale</string>
+    <string name="absent_classes">Klasy</string>
+    <string name="substitutions_empty_title">Bez zmian</string>
+    <string name="substitutions_empty_text">Na ten dzień nie ma żadnych zastępstw. Plan jak zwykle.</string>
+    <string name="substitutions_error_title">Nie udało się pobrać zastępstw</string>
+    <string name="substitutions_error_text">Sprawdź internet albo spróbuj za chwilę. EduPage mogło nie odpowiedzieć.</string>
+    <string name="substitutions_mine_class">Twoja klasa · %1$s</string>
+    <string name="substitutions_mine_teacher">Twoje zastępstwa</string>
+    <string name="substitutions_no_mine">Bez zmian dla Ciebie</string>
+    <string name="substitutions_others">Inne klasy</string>
+    <string name="substitutions_search_class">Szukaj klasy</string>
+    <string name="detail_teacher_absent">%1$s nieobecny/a</string>
+    <string name="detail_room_change">sala %1$s → %2$s</string>
+    <string name="detail_without_classes">bez klasy %1$s</string>
+    <plurals name="changes_count">
+        <item quantity="one">%d zmiana</item>
+        <item quantity="few">%d zmiany</item>
+        <item quantity="many">%d zmian</item>
+        <item quantity="other">%d zmiany</item>
+    </plurals>
+    <plurals name="teachers_count">
+        <item quantity="one">%d nauczyciel</item>
+        <item quantity="few">%d nauczycieli</item>
+        <item quantity="many">%d nauczycieli</item>
+        <item quantity="other">%d nauczycieli</item>
+    </plurals>
+    <plurals name="rooms_count">
+        <item quantity="one">%d sala</item>
+        <item quantity="few">%d sale</item>
+        <item quantity="many">%d sal</item>
+        <item quantity="other">%d sali</item>
+    </plurals>
+    <plurals name="classes_count">
+        <item quantity="one">%d klasa</item>
+        <item quantity="few">%d klasy</item>
+        <item quantity="many">%d klas</item>
+        <item quantity="other">%d klasy</item>
+    </plurals>
 
     <!-- Search -->
-    <string name="search_teachers">Nauczyciele</string>
-    <string name="search_classes">Klasy</string>
-    <string name="search_rooms">Sale</string>
-    <string name="search_free_rooms">Wolne sale</string>
-    <string name="search_hint">Szukaj…</string>
-    <string name="detail_teacher_classes">Przedmioty i klasy</string>
-    <string name="detail_class_teachers">Nauczyciele klasy</string>
-    <string name="detail_room">Sala</string>
-    <string name="free_rooms_now">Teraz</string>
-    <string name="free_rooms_pick_time">Wybierz godzinę</string>
-    <string name="free_rooms_at">O %1$s</string>
-    <string name="free_rooms_period">Wolne sale na lekcji %1$d (%2$s)</string>
-    <string name="free_rooms_next_period">Przerwa – wolne sale na najbliższej lekcji %1$d (%2$s)</string>
-    <string name="free_rooms_no_lesson">O tej godzinie nie ma lekcji.</string>
-    <string name="free_rooms_none">Brak wolnych sal.</string>
+    <string name="search_teacher">Nauczyciel</string>
+    <string name="search_class">Klasa</string>
+    <string name="search_room">Sala</string>
+    <string name="search_free">Wolne</string>
+    <string name="search_hint_teacher">Skrót nauczyciela</string>
+    <string name="search_hint_class">Klasa, np. 2et</string>
+    <string name="search_hint_room">Sala, np. A53</string>
+    <string name="search_nothing">Nic nie znaleziono.</string>
+    <string name="free_now">Teraz</string>
+    <string name="free_picked">Wybrana lekcja</string>
+    <string name="free_info">Lekcja %1$d · %2$s</string>
+    <string name="free_now_suffix">teraz</string>
+    <string name="free_count">Wolne · %1$d</string>
+    <string name="busy_count">Zajęte · %1$d</string>
+    <string name="room_unavailable">niedostępna</string>
+    <string name="detail_teacher_sub">Plan nauczyciela</string>
+    <string name="detail_class_title">Klasa %1$s</string>
+    <string name="detail_class_sub">Plan klasy</string>
+    <string name="detail_room_title">Sala %1$s</string>
+    <string name="detail_room_busy">Teraz zajęta: %1$s · %2$s</string>
+    <string name="detail_room_free">Teraz wolna</string>
+    <string name="detail_no_lessons">Tego dnia nie ma tu lekcji.</string>
 
     <!-- Settings -->
     <string name="settings_profile">Profil</string>
-    <string name="settings_profile_student">Uczeń · klasa %1$s</string>
-    <string name="settings_profile_teacher">Nauczyciel · %1$s</string>
+    <string name="settings_change">Zmień</string>
     <string name="settings_profile_unknown">Nie ustawiono</string>
-    <string name="settings_change_profile">Zmień tryb lub klasę</string>
-    <string name="settings_groups">Grupy</string>
-    <string name="settings_groups_all">Wszystkie</string>
-    <string name="settings_theme">Motyw</string>
+    <string name="settings_only_my_groups">Tylko moje grupy</string>
+    <string name="settings_only_my_groups_desc">Ukrywa lekcje innych grup</string>
+    <string name="settings_theme">Wygląd</string>
     <string name="theme_system">Systemowy</string>
     <string name="theme_light">Jasny</string>
     <string name="theme_dark">Ciemny</string>
     <string name="settings_notifications">Powiadomienia</string>
-    <string name="settings_notifications_toggle">Powiadomienia o zastępstwach</string>
-    <string name="settings_notifications_soon">Pojawią się w kolejnej wersji; ustawienie zostanie zapamiętane.</string>
+    <string name="settings_notifications_toggle">Zastępstwa i zmiany</string>
+    <string name="settings_notifications_desc">Odwołania, zmiany sal i nauczycieli</string>
+    <string name="settings_quiet">Cisza w weekend</string>
+    <string name="settings_quiet_desc">Bez powiadomień w sobotę i niedzielę</string>
     <string name="settings_data">Dane</string>
-    <string name="settings_last_refresh">Ostatnia aktualizacja: %1$s</string>
-    <string name="settings_never_refreshed">Jeszcze nie pobrano danych</string>
-    <string name="settings_timetable_version">Wersja planu %1$s</string>
-    <string name="settings_refresh">Odśwież teraz</string>
+    <string name="settings_last_sync">Ostatnia synchronizacja</string>
+    <string name="settings_last_sync_value">%1$s · elektryk.edupage.org</string>
+    <string name="settings_today_at">Dziś, %1$s</string>
+    <string name="settings_never_refreshed">Jeszcze nie pobrano</string>
     <string name="settings_refresh_failed">Ostatnie odświeżenie nie powiodło się.</string>
-    <string name="settings_about_section">Informacje</string>
+    <string name="settings_info">Informacje</string>
     <string name="settings_about">O aplikacji</string>
+    <string name="settings_about_desc">Wersja, licencje, kod źródłowy</string>
 
     <!-- About -->
-    <string name="about_version">Wersja %1$s</string>
-    <string name="about_unofficial_title">Nieoficjalna aplikacja</string>
-    <string name="about_unofficial_short">Nieoficjalna aplikacja, niezwiązana ze szkołą ani z EduPage.</string>
-    <string name="about_unofficial">QbitPlan nie jest powiązany ze szkołą ani z firmą EduPage. Korzysta wyłącznie z danych, które szkoła publikuje bez logowania na elektryk.edupage.org. W razie wątpliwości obowiązuje plan na stronie szkoły.</string>
+    <string name="about_version">Wersja %1$s · open source</string>
+    <string name="about_unofficial_short">Nieoficjalna aplikacja, niezwiązana z EduPage ani szkołą.</string>
+    <string name="about_unofficial">Nieoficjalna aplikacja, niezwiązana z EduPage ani szkołą. Dane pochodzą z publicznego planu elektryk.edupage.org.</string>
     <string name="about_author">Autor</string>
     <string name="about_author_value">MILK · milkthe.dev</string>
-    <string name="about_source">Kod źródłowy na GitHubie</string>
+    <string name="about_source">Kod źródłowy</string>
+    <string name="about_source_value">GitHub</string>
     <string name="about_license">Licencja</string>
-    <string name="about_license_value">GNU General Public License v3.0</string>
+    <string name="about_license_value">GPL-3.0</string>
     <string name="about_oss_licenses">Licencje open source</string>
+    <string name="about_oss_desc">Biblioteki użyte w aplikacji</string>
 
     <!-- Onboarding -->
-    <string name="onboarding_welcome">Plan lekcji i zastępstwa dla elektryk.edupage.org.</string>
+    <string name="onboarding_step">%1$d z 3</string>
+    <string name="onboarding_role_title">Kim jesteś?</string>
+    <string name="onboarding_role_text">Dobierzemy plan i powiadomienia. Zmienisz to później w ustawieniach.</string>
     <string name="mode_student">Uczeń</string>
-    <string name="mode_student_desc">Plan klasy i Twoich grup</string>
+    <string name="mode_student_desc">Plan Twojej klasy i grup</string>
     <string name="mode_teacher">Nauczyciel</string>
-    <string name="mode_teacher_desc">Twój plan i zastępstwa, które prowadzisz</string>
-    <string name="onboarding_no_data">Nie udało się pobrać planu. Sprawdź połączenie z internetem.</string>
-    <string name="onboarding_class_title">Wybierz klasę</string>
+    <string name="mode_teacher_desc">Twój plan i Twoje zastępstwa</string>
+    <string name="onboarding_class_title">Twoja klasa</string>
+    <string name="onboarding_class_text">elektryk.edupage.org · %1$d klas</string>
+    <string name="onboarding_class_search">Szukaj klasy, np. 2at</string>
     <string name="onboarding_groups_title">Twoje grupy</string>
-    <string name="onboarding_groups_desc">Wybierz grupę w każdym podziale albo zostaw „Wszystkie”. Możesz to zmienić w ustawieniach.</string>
+    <string name="onboarding_groups_text">Pokażemy tylko lekcje, na które chodzisz.</string>
     <string name="groups_all">Wszystkie</string>
-    <string name="onboarding_teacher_title">Twój skrót w planie</string>
-    <string name="onboarding_teacher_desc">Niektóre skróty się powtarzają – pomogą przedmioty i klasy obok.</string>
+    <string name="division_split">Podział klasy</string>
+    <string name="division_english">Język angielski</string>
+    <string name="division_german">Język niemiecki</string>
+    <string name="division_language">Drugi język</string>
+    <string name="division_pe">Wychowanie fizyczne</string>
+    <string name="division_religion">Religia / etyka</string>
+    <string name="onboarding_teacher_title">Twój skrót</string>
+    <string name="onboarding_teacher_text">W EduPage nauczyciele mają skróty. Wybierz swój i dopisz imię.</string>
+    <string name="onboarding_teacher_search">Szukaj skrótu, np. RzM</string>
     <string name="onboarding_name_title">Imię i nazwisko</string>
-    <string name="onboarding_name_desc">W planie są tylko skróty, a w zastępstwach pełne nazwiska. Wybierz siebie z listy albo wpisz tak, jak w zastępstwach.</string>
-    <string name="onboarding_name_label">Imię i nazwisko</string>
-    <string name="onboarding_finish">Gotowe</string>
+    <string name="onboarding_name_matches">Pasuje do skrótu %1$s</string>
+    <string name="onboarding_name_manual">Wpiszę ręcznie</string>
+    <string name="onboarding_name_manual_desc">Tak jak w zastępstwach</string>
+    <string name="onboarding_name_hint">Imię i nazwisko</string>
+    <string name="onboarding_notif_title">Nie przegap zmian</string>
+    <string name="onboarding_notif_text">Powiadomimy Cię o zastępstwie, odwołanej lekcji albo zmianie sali.</string>
+    <string name="onboarding_notif_app">QbitPlan · teraz</string>
+    <string name="onboarding_notif_sample_title">%1$s: lekcja 6 odwołana</string>
+    <string name="onboarding_notif_sample_text">Poniedziałek · 12:15–13:00</string>
+    <string name="onboarding_notif_sample_teacher_title">Zastępstwo: lekcja 1</string>
+    <string name="onboarding_notif_sample_teacher_text">Za nieobecnego nauczyciela · sala A53</string>
+    <string name="onboarding_notif_enable">Włącz powiadomienia</string>
+    <string name="onboarding_notif_later">Później</string>
 </resources>

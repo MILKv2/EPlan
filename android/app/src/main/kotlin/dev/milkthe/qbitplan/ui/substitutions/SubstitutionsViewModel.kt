@@ -7,7 +7,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.milkthe.qbitplan.core.model.AbsenceNote
 import dev.milkthe.qbitplan.core.model.Substitution
 import dev.milkthe.qbitplan.core.schedule.LessonStatus
-import dev.milkthe.qbitplan.core.schedule.upcomingSchoolDays
+import dev.milkthe.qbitplan.core.schedule.isSchoolDay
+import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
+import dev.milkthe.qbitplan.core.schedule.nextSchoolDay
 import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.SyncState
@@ -19,6 +21,7 @@ import dev.milkthe.qbitplan.ui.common.text
 import dev.milkthe.qbitplan.ui.theme.toLessonStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -30,16 +33,17 @@ import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 
 @Immutable
 data class SubstitutionRow(
     val key: String,
-    val periods: String?,
+    val period: String,
     val status: LessonStatus,
-    val groups: String?,
-    val oldSubject: String?,
-    val subject: String?,
+    val title: String,
+    val oldTitle: String?,
+    val group: String?,
     val oldTeacher: String?,
     val teacher: String?,
     val oldRoom: String?,
@@ -59,10 +63,11 @@ data class SubstitutionsState(
     val absentTeachers: List<String> = emptyList(),
     val unavailableRooms: List<String> = emptyList(),
     val absentClasses: List<String> = emptyList(),
-    val message: String? = null,
-    val pinned: List<ClassSection> = emptyList(),
-    val sections: List<ClassSection> = emptyList(),
-    val fetchedAt: Instant? = null,
+    val isEmpty: Boolean = false,
+    val mineTitle: String? = null,
+    val isTeacher: Boolean = false,
+    val mine: List<SubstitutionRow> = emptyList(),
+    val others: List<ClassSection> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -75,9 +80,11 @@ class SubstitutionsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val today: LocalDate = LocalDate.now(clock)
-    val dates: List<LocalDate> = upcomingSchoolDays(today, 5)
 
-    private val selected = MutableStateFlow(dates.first())
+    /** The two quick days: today (or the next school day on a weekend) and the school day after it. */
+    val quickDays: List<LocalDate> = nearestSchoolDay(today).let { listOf(it, nextSchoolDay(it)) }
+
+    private val selected = MutableStateFlow(quickDays.first())
     val selectedDate: StateFlow<LocalDate> = selected.asStateFlow()
 
     private val query = MutableStateFlow("")
@@ -96,37 +103,35 @@ class SubstitutionsViewModel @Inject constructor(
         val subs = day.value
         val names = tt?.let { LessonItemMapper(it.value) }
         val needle = q.trim().lowercase(PolishLocale)
+        val isTeacher = prefs.mode == UserMode.TEACHER
 
-        val sections = subs.substitutions
-            .filter { needle.isEmpty() || it.matches(needle, names) }
-            .groupBy { it.className }
-            .map { (cls, rows) -> ClassSection(cls, rows.mapIndexed { i, r -> r.toRow("$cls-$i", names) }) }
-            .sortedWith(compareBy({ it.className.firstOrNull()?.digitToIntOrNull() ?: 9 }, { it.className }))
-
-        val pinned = when (prefs.mode) {
-            UserMode.STUDENT -> sections.filter { it.className == prefs.classShort }
-            UserMode.TEACHER -> prefs.teacherFullName?.let { name ->
-                subs.substitutions.filter { it.involvesTeacher(name) }
-                    .groupBy { it.className }
-                    .map { (cls, rows) -> ClassSection(cls, rows.mapIndexed { i, r -> r.toRow("mine-$cls-$i", names) }) }
-            }.orEmpty()
+        val mineRows = when (prefs.mode) {
+            UserMode.STUDENT -> subs.substitutions.filter { it.className == prefs.classShort }
+            UserMode.TEACHER -> prefs.teacherFullName?.let { name -> subs.substitutions.filter { it.involvesTeacher(name) } }.orEmpty()
             null -> emptyList()
         }
+        val others = subs.substitutions
+            .filter { !(prefs.mode == UserMode.STUDENT && it.className == prefs.classShort) }
+            .filter { needle.isEmpty() || it.className.lowercase(PolishLocale).contains(needle) }
+            .groupBy { it.className }
+            .map { (cls, rows) -> ClassSection(cls, rows.mapIndexed { i, r -> r.toRow("$cls-$i", names, withClass = false) }) }
+            .sortedWith(compareBy({ it.className.firstOrNull()?.digitToIntOrNull() ?: 9 }, { it.className }))
 
         SubstitutionsState(
             loading = false,
             absentTeachers = subs.absentTeachers.map { it.text() },
             unavailableRooms = subs.unavailableClassrooms.map { it.text() },
             absentClasses = subs.absentClasses.map { it.text() },
-            message = subs.message,
-            pinned = pinned,
-            sections = if (prefs.mode == UserMode.STUDENT) sections.filterNot { it.className == prefs.classShort } else sections,
-            fetchedAt = day.fetchedAt,
+            isEmpty = subs.substitutions.isEmpty(),
+            mineTitle = if (isTeacher) null else prefs.classShort,
+            isTeacher = isTeacher,
+            mine = mineRows.mapIndexed { i, r -> r.toRow("mine-$i", names, withClass = isTeacher) },
+            others = others,
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubstitutionsState())
 
     init {
-        sync.ensureSubstitutions(selected.value)
+        quickDays.forEach(sync::ensureSubstitutions)
     }
 
     fun select(date: LocalDate) {
@@ -138,27 +143,29 @@ class SubstitutionsViewModel @Inject constructor(
 
     fun refresh() = sync.refreshSubstitutions(selected.value)
 
+    /** School days of [month] that have substitutions in the cache (no network). */
+    fun daysWithChanges(month: YearMonth): Flow<Set<LocalDate>> {
+        val days = (1..month.lengthOfMonth()).map { month.atDay(it) }.filter { it.isSchoolDay() }
+        return combine(days.map { repository.substitutions(it) }) { all ->
+            days.filterIndexed { i, _ -> all[i]?.value?.substitutions?.isNotEmpty() == true }.toSet()
+        }.flowOn(Dispatchers.Default)
+    }
+
     private fun AbsenceNote.text() = periods?.let { "$name (${it.text()})" } ?: name
 
-    private fun Substitution.matches(needle: String, names: LessonItemMapper?): Boolean =
-        listOfNotNull(
-            className, teacher?.old, teacher?.new, subject?.old, subject?.new,
-            names?.subjectName(subject?.old), names?.subjectName(subject?.new),
-            classroom?.old, classroom?.new,
-        ).plus(groups).any { needle in it.lowercase(PolishLocale) }
-
-    private fun Substitution.toRow(key: String, names: LessonItemMapper?): SubstitutionRow {
+    private fun Substitution.toRow(key: String, names: LessonItemMapper?, withClass: Boolean): SubstitutionRow {
         fun name(short: String?) = short?.let { names?.subjectName(it) ?: it }
         val subj = subject
         val subjectChanged = subj != null && subj.isChanged && subj.old != null && subj.new != null
+        val title = name(subj?.new ?: subj?.old).orEmpty()
         val teacherChanged = teacher?.isChanged == true
         return SubstitutionRow(
             key = key,
-            periods = periods?.text(),
+            period = periods?.text().orEmpty(),
             status = type.toLessonStatus(),
-            groups = groups.joinToString(", ").ifEmpty { null },
-            oldSubject = if (subjectChanged) name(subject?.old) else null,
-            subject = name(subject?.new ?: subject?.old),
+            title = if (withClass) "$className · $title" else title,
+            oldTitle = if (subjectChanged) name(subj.old) else null,
+            group = groups.joinToString(", ").ifEmpty { null },
             oldTeacher = if (teacherChanged) teacher?.old else null,
             teacher = if (teacherChanged) teacher?.new else teacher?.old,
             oldRoom = classroom?.takeIf { it.isChanged }?.old,

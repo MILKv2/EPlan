@@ -11,6 +11,7 @@ import dev.milkthe.qbitplan.core.schedule.bellStateAt
 import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
 import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.SyncManager
+import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.ui.common.PolishLocale
 import dev.milkthe.qbitplan.ui.common.byFrequency
 import kotlinx.coroutines.Dispatchers
@@ -23,9 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -39,7 +38,7 @@ enum class SearchTab { TEACHERS, CLASSES, ROOMS, FREE_ROOMS }
 enum class DetailKind { TEACHER, CLASS, ROOM }
 
 @Immutable
-data class SearchEntry(val id: String, val title: String, val subtitle: String?, private val haystack: String) {
+data class SearchEntry(val id: String, val title: String, val subtitle: String?, val highlighted: Boolean, private val haystack: String) {
     fun matches(query: String) = query.isEmpty() || query in haystack
 }
 
@@ -50,20 +49,26 @@ data class SearchIndex(
     val rooms: List<SearchEntry> = emptyList(),
 )
 
-/** [period] is the lesson the result is for; [isNext] when "now" falls in a break. */
+@Immutable
+data class RoomTile(val room: String, val usedBy: String?, val unavailable: Boolean)
+
 @Immutable
 data class FreeRoomsState(
-    val time: LocalTime? = null,
-    val period: Int? = null,
-    val isNext: Boolean = false,
-    val rooms: List<String> = emptyList(),
     val loading: Boolean = true,
+    val pickedLesson: Boolean = false,
+    val lessons: List<Int> = emptyList(),
+    val period: Int? = null,
+    val start: LocalTime? = null,
+    val end: LocalTime? = null,
+    val free: List<RoomTile> = emptyList(),
+    val busy: List<RoomTile> = emptyList(),
 )
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SearchViewModel @Inject constructor(
     private val repository: SchoolRepository,
+    preferences: UserPreferencesRepository,
     private val sync: SyncManager,
     private val clock: Clock,
 ) : ViewModel() {
@@ -74,15 +79,14 @@ class SearchViewModel @Inject constructor(
     private val queryState = MutableStateFlow("")
     val query: StateFlow<String> = queryState.asStateFlow()
 
-    /** `null` = now. */
-    private val pickedTime = MutableStateFlow<LocalTime?>(null)
+    /** `null` = the lesson running now (or the next one). */
+    private val pickedPeriod = MutableStateFlow<Int?>(null)
 
     val date: LocalDate = nearestSchoolDay(LocalDate.now(clock))
 
-    private val index: Flow<SearchIndex> = repository.timetable
-        .map { tt -> tt?.value?.let(::buildIndex) ?: SearchIndex() }
-        .distinctUntilChanged()
-        .flowOn(Dispatchers.Default)
+    private val index: Flow<SearchIndex> = combine(repository.timetable, preferences.preferences) { tt, prefs ->
+        tt?.value?.let { buildIndex(it, prefs.classId) } ?: SearchIndex()
+    }.distinctUntilChanged().flowOn(Dispatchers.Default)
 
     val results: StateFlow<SearchIndex> = combine(index, queryState) { idx, q ->
         val needle = q.trim().lowercase(PolishLocale)
@@ -100,57 +104,59 @@ class SearchViewModel @Inject constructor(
         }
     }
 
-    val freeRooms: StateFlow<FreeRoomsState> = pickedTime
-        .flatMapLatest { picked -> if (picked != null) flowOf(picked to false) else minuteTicks.map { it to true } }
-        .flatMapLatest { (time, isNow) ->
-            combine(repository.timetable, repository.substitutions(date)) { tt, subs ->
-                tt ?: return@combine FreeRoomsState(time = time.takeUnless { isNow }, loading = false)
-                val timetable = tt.value
-                val state = bellStateAt(timetable.periods, time)
-                val (period, isNext) = when (state) {
-                    is BellState.DuringLesson -> state.period.number to false
-                    is BellState.Break -> if (isNow) state.next.number to true else null to false
-                    BellState.AfterSchool -> null to false
-                }
-                FreeRoomsState(
-                    time = time.takeUnless { isNow },
-                    period = period,
-                    isNext = isNext,
-                    rooms = period?.let { p -> DayPlanner(timetable).freeClassrooms(date, p, subs?.value).map { it.short } }.orEmpty(),
-                    loading = false,
-                )
-            }
+    val freeRooms: StateFlow<FreeRoomsState> = combine(
+        repository.timetable, repository.substitutions(date), pickedPeriod, minuteTicks,
+    ) { tt, subs, picked, now ->
+        val timetable = tt?.value ?: return@combine FreeRoomsState(loading = false)
+        val current = when (val state = bellStateAt(timetable.periods, now)) {
+            is BellState.DuringLesson -> state.period.number
+            is BellState.Break -> state.next.number
+            BellState.AfterSchool -> timetable.periods.firstOrNull()?.number
         }
-        .flowOn(Dispatchers.Default)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FreeRoomsState())
+        val period = picked ?: current ?: return@combine FreeRoomsState(loading = false)
+        val occupancy = DayPlanner(timetable).classroomOccupancy(date, period, subs?.value)
+        FreeRoomsState(
+            loading = false,
+            pickedLesson = picked != null,
+            lessons = timetable.periods.map { it.number },
+            period = period,
+            start = timetable.period(period)?.start,
+            end = timetable.period(period)?.end,
+            free = occupancy.filter { it.isFree }.map { RoomTile(it.room.short, null, false) },
+            busy = occupancy.filterNot { it.isFree }.map { RoomTile(it.room.short, it.classNames.joinToString(", ").ifEmpty { null }, it.unavailable) },
+        )
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), FreeRoomsState())
 
     init {
         sync.ensureSubstitutions(date)
     }
 
-    fun selectTab(value: SearchTab) { tabState.value = value }
+    fun selectTab(value: SearchTab) {
+        tabState.value = value
+        queryState.value = ""
+    }
+
     fun setQuery(value: String) { queryState.value = value }
-    fun pickTime(value: LocalTime?) { pickedTime.value = value }
 
-    private fun buildIndex(tt: Timetable): SearchIndex {
-        fun shorts(ids: Iterable<String>, lookup: (String) -> String?) = ids.mapNotNull(lookup).distinct().sorted()
+    fun pickLesson(period: Int?) { pickedPeriod.value = period }
 
+    private fun buildIndex(tt: Timetable, myClassId: String?): SearchIndex {
         val teachers = tt.teachers.values.map { teacher ->
             val lessons = tt.lessonsForTeacher(teacher.id)
             val subjects = lessons.mapNotNull { tt.subjects[it.subjectId]?.short }.byFrequency()
-            val classes = shorts(lessons.flatMap { it.classIds }) { tt.classes[it]?.short }
+            val classes = lessons.flatMap { it.classIds }.mapNotNull { tt.classes[it]?.short }.distinct().sorted()
             val subtitle = listOf(subjects.take(4).joinToString(", "), classes.take(6).joinToString(", "))
                 .filter { it.isNotEmpty() }.joinToString(" · ").ifEmpty { null }
-            SearchEntry(teacher.id, teacher.short, subtitle, "${teacher.short} ${subtitle.orEmpty()}".lowercase(PolishLocale))
+            SearchEntry(teacher.id, teacher.short, subtitle, false, "${teacher.short} ${subtitle.orEmpty()}".lowercase(PolishLocale))
         }.sortedWith(compareBy({ it.title.lowercase(PolishLocale) }, { it.subtitle }))
 
         val classes = tt.classes.values.map { cls ->
-            val tutor = cls.classTeacherId?.let { tt.teachers[it]?.short }
-            SearchEntry(cls.id, cls.short, tutor, "${cls.short} ${cls.name}".lowercase(PolishLocale))
+            SearchEntry(cls.id, cls.short, null, cls.id == myClassId, "${cls.short} ${cls.name}".lowercase(PolishLocale))
         }.sortedBy { it.title }
 
-        val rooms = tt.classrooms.values.map { room ->
-            SearchEntry(room.id, room.short, room.name.takeIf { it != room.short }, "${room.short} ${room.name}".lowercase(PolishLocale))
+        val usedRooms = tt.lessons.flatMap { it.classroomIds }.toSet()
+        val rooms = tt.classrooms.values.filter { it.id in usedRooms }.map { room ->
+            SearchEntry(room.id, room.short, null, false, "${room.short} ${room.name}".lowercase(PolishLocale))
         }.sortedBy { it.title }
 
         return SearchIndex(teachers, classes, rooms)
