@@ -4,10 +4,8 @@ import java.time.LocalDate
 import java.time.Month
 
 /**
- * Rok szkolny w rozumieniu EduPage: 2026 = rok 2026/27.
- * Nowy rok liczymy od sierpnia (EduPage dodaje plany na nowy rok pod koniec
- * wakacji). Jeśli dla tego roku nie ma jeszcze domyślnego planu, repozytorium
- * ponawia zapytanie z rokiem o 1 mniejszym.
+ * EduPage school year: 2026 = 2026/27, switching in August. Callers retry with
+ * the previous year when the new one has no default timetable yet.
  */
 fun schoolYearOf(date: LocalDate): Int =
     if (date.month >= Month.AUGUST) date.year else date.year - 1

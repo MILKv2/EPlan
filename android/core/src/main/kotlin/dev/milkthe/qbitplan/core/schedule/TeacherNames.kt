@@ -6,9 +6,8 @@ import java.text.Collator
 import java.util.Locale
 
 /**
- * Imiona i nazwiska nauczycieli znane z zastępstw (nieobecni, zastępowani,
- * zastępcy), posortowane po polsku. Służy do wyboru „kim jestem” w onboardingu
- * nauczyciela, bo plan stały zawiera tylko skróty.
+ * Teacher full names seen in substitutions, sorted by surname (Polish collation).
+ * The regular plan only has shorts, so this feeds the teacher onboarding picker.
  */
 fun knownTeacherNames(days: Collection<DaySubstitutions>): List<String> {
     val names = buildList {
@@ -19,10 +18,9 @@ fun knownTeacherNames(days: Collection<DaySubstitutions>): List<String> {
     }
     val collator = Collator.getInstance(Locale.forLanguageTag("pl-PL"))
     return names.map { it.trim() }
-        .filter { it.contains(' ') } // „Imię Nazwisko”, odrzuca śmieci
+        .filter { it.contains(' ') }
         .distinctBy { normalizeName(it) }
         .sortedWith { a, b -> collator.compare(a.surnameFirst(), b.surnameFirst()) }
 }
 
-/** „Anna Grzebień” → „Grzebień Anna” (sortowanie po nazwisku). */
 private fun String.surnameFirst(): String = substringAfterLast(' ') + " " + substringBeforeLast(' ')

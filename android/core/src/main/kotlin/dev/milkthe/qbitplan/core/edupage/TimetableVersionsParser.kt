@@ -6,12 +6,12 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
 
-/** Parser odpowiedzi `getTTViewerData` (lista wersji planu). */
+/** Parses `getTTViewerData` (list of timetable versions). */
 object TimetableVersionsParser {
 
     fun parse(raw: String): TimetableVersions {
         val result = EdupageJson.json.decodeFromJsonElement(ViewerDto.serializer(), EdupageJson.unwrap(raw))
-        val regular = result.regular ?: throw EdupageException("Brak sekcji \"regular\" w liście planów")
+        val regular = result.regular ?: throw EdupageException("Missing \"regular\" in timetable list")
         return TimetableVersions(
             defaultTtNum = regular.defaultNum.takeIf { it.isNotBlank() },
             versions = regular.timetables.map {
@@ -26,8 +26,6 @@ object TimetableVersionsParser {
         )
     }
 
-    // DTO (Data Transfer Object) = klasy dokładnie odwzorowujące JSON.
-    // @Serializable generuje kod (de)serializacji, @SerialName mapuje nazwę pola.
     @Serializable
     private class ViewerDto(val regular: RegularDto? = null)
 

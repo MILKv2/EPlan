@@ -40,7 +40,6 @@ class DayPlannerTest {
         assertEquals(Change("PEiE", "jang"), p5.subject)
         assertEquals("Dorota Dziadosz", p5.substituteName)
 
-        // PT 6-8 bez zmian: trzy godziny sklejone w jeden kafelek
         val pt = plan.single { it.subject.new == "PT" }
         assertEquals(PeriodRange(6, 8), pt.periods)
         assertEquals(LessonStatus.NORMAL, pt.status)
@@ -50,7 +49,7 @@ class DayPlannerTest {
         val religion = plan.single { it.subject.old == "religia" }
         assertEquals(LessonStatus.CANCELLED, religion.status)
 
-        assertTrue(plan.none { it.groupNames == listOf("1. Grupa") }, "1. grupa ukryta")
+        assertTrue(plan.none { it.groupNames == listOf("1. Grupa") }, "group 1 hidden")
     }
 
     @Test
@@ -74,7 +73,7 @@ class DayPlannerTest {
         assertEquals(PeriodRange.single(4), here.periods)
         assertEquals(0, here.movedFromPeriod)
         assertEquals("matem", here.subject.new)
-        assertEquals("A56", here.classroom?.new) // sala z lekcji źródłowej
+        assertEquals("A56", here.classroom?.new)
         assertEquals("BR", here.plannedTeachers.single().short)
 
         assertEquals(LessonStatus.CANCELLED, plan.single { it.subject.old == "Eob" }.status)
@@ -88,12 +87,12 @@ class DayPlannerTest {
         assertEquals(LessonStatus.NO_SUBSTITUTE, gw.status)
         assertEquals(Change("Andrzej Frączek", null), gw.teacher)
         assertNull(gw.substituteName)
-        assertTrue(gw.status.takesPlace, "uczniowie mają przyjść (np. na dyżur)")
+        assertTrue(gw.status.takesPlace, "students still attend")
     }
 
     @Test
     fun `absent class marks the whole day`() {
-        // 2026-10-15 to czwartek; nieobecność klasy dotyczy każdej jej lekcji.
+        // 2026-10-15 is a Thursday; an absent class affects every lesson.
         val plan = planner.forClass(classId("1dt"), LocalDate.of(2026, 10, 15), subs("2026-10-15"))
         assertTrue(plan.isNotEmpty())
         assertTrue(plan.all { it.status == LessonStatus.CLASS_ABSENT }, plan.toString())
@@ -103,14 +102,13 @@ class DayPlannerTest {
     fun `no substitutions means plain timetable, weekend is empty`() {
         val plain = planner.forClass(classId("1at"), tuesday, substitutions = null)
         assertTrue(plain.all { it.status == LessonStatus.NORMAL })
-        // hist, ZastMat, GW, PEiE 4-5 (×2 grupy), PT 6-8 (×2 grupy), religia
         assertEquals(listOf(1, 2, 3, 4, 4, 6, 6, 9), plain.map { it.periods.first })
         assertTrue(planner.forClass(classId("1at"), LocalDate.of(2026, 11, 28), subs("2026-11-21")).isEmpty())
     }
 
     @Test
     fun `week filter is supported`() {
-        // Wszystkie lekcje w tej szkole są w obu tygodniach, więc filtr niczego nie zmienia.
+        // Every lesson in this school is in both weeks.
         val all = planner.forClass(classId("1at"), tuesday, null)
         assertEquals(all, planner.forClass(classId("1at"), tuesday, null, weekIndex = 0))
         assertEquals(all, planner.forClass(classId("1at"), tuesday, null, weekIndex = 1))
@@ -125,7 +123,6 @@ class DayPlannerTest {
         assertEquals(listOf("1at"), extra.classNames)
         assertEquals("inf", extra.subject.new)
         assertEquals("B23", extra.classroom?.new)
-        // jej własne lekcje z planu też są
         assertEquals(listOf(1, 2, 4, 6, 7), plan.map { it.periods.first })
         assertEquals(listOf("4ct"), plan.single { it.periods == PeriodRange(2, 3) }.classNames)
     }
@@ -144,7 +141,7 @@ class DayPlannerTest {
 
     @Test
     fun `joint lesson appears once in teacher view with all classes`() {
-        // WF Moskala (MP): 4bl Dziew1 + 4fl Dziew2, lekcje 1-2
+        // Moskal's (MP) joint PE: 4bl Dziew1 + 4fl Dziew2, periods 1-2
         val mp = tt.lessons.single { it.day == 1 && it.periods == PeriodRange(1, 2) && tt.classes[it.classIds.first()]?.short == "4bl" && "Dziew1" in it.groupIds.map { g -> tt.groups[g]!!.name } }.teacherIds.single()
         val wf = planner.forTeacher(mp, "Piotr Moskal", tuesday, subs("2026-11-24")).filter { it.periods.first == 1 }
         assertEquals(1, wf.size, wf.toString())
@@ -167,9 +164,9 @@ class DayPlannerTest {
     fun `free classrooms account for changes and unavailable rooms`() {
         val s = subs("2026-11-24")
         val free4 = planner.freeClassrooms(tuesday, 4, s).map { it.short }
-        assertTrue("A10" in free4, "A10 zwolniona przez zmianę sali")
-        assertTrue("B23" !in free4, "B23 zajęta przez zastępstwo")
-        assertTrue("A24" !in planner.freeClassrooms(tuesday, 2, s).map { it.short }, "A24 niedostępna na 2. lekcji")
+        assertTrue("A10" in free4, "A10 freed by a room change")
+        assertTrue("B23" !in free4, "B23 taken by a substitution")
+        assertTrue("A24" !in planner.freeClassrooms(tuesday, 2, s).map { it.short }, "A24 unavailable in period 2")
         assertTrue(planner.freeClassrooms(tuesday, 4, null).map { it.short }.let { "A10" !in it && "B23" in it })
     }
 }

@@ -13,10 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dagger.hilt.android.AndroidEntryPoint
 
-/**
- * Tymczasowy ekran. Właściwe UI (onboarding, Plan, Zastępstwa, Szukaj,
- * Ustawienia) powstanie w etapie 4.
- */
+/** Placeholder until the screens land. */
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

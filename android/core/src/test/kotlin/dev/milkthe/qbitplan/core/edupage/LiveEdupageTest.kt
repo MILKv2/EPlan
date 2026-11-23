@@ -10,29 +10,28 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Test na prawdziwym serwerze: sprawdza, czy EduPage nie zmieniło formatu.
- * Domyślnie pomijany; uruchomienie:
+ * Checks the live server still parses (detects format changes). Skipped by default:
  *   QBIT_LIVE=1 ./gradlew :core:test --tests '*LiveEdupageTest*' --rerun
  */
 class LiveEdupageTest {
 
     @Test
     fun `live data parses`() = runTest(timeout = 2.minutes) {
-        assumeTrue("Ustaw QBIT_LIVE=1", System.getenv("QBIT_LIVE") == "1")
+        assumeTrue("Set QBIT_LIVE=1", System.getenv("QBIT_LIVE") == "1")
         val api = OkHttpEdupageApi(OkHttpClient())
         val today = LocalDate.now()
 
         val versions = TimetableVersionsParser.parse(api.fetchTimetableVersions(schoolYearOf(today)))
-        val ttNum = assertNotNull(versions.defaultTtNum, "brak domyślnego planu")
+        val ttNum = assertNotNull(versions.defaultTtNum, "no default timetable")
 
         val tt = RegularTimetableParser.parse(api.fetchRegularTimetable(ttNum), ttNum)
         assertTrue(tt.lessons.isNotEmpty() && tt.classes.isNotEmpty() && tt.periods.isNotEmpty())
 
         for (date in listOf(today, today.plusDays(1))) {
             val day = SubstitutionsParser.parse(date, api.fetchSubstitutions(date))
-            println("$date: ${day.substitutions.size} zastępstw, komunikat=${day.message}")
-            assertTrue(day.substitutions.all { it.unknownParts.isEmpty() }, "nieznane części: $day")
-            assertTrue(day.otherNotes.isEmpty(), "nieznane nagłówki: ${day.otherNotes}")
+            println("$date: ${day.substitutions.size} substitutions, message=${day.message}")
+            assertTrue(day.substitutions.all { it.unknownParts.isEmpty() }, "unknown parts: $day")
+            assertTrue(day.otherNotes.isEmpty(), "unknown headers: ${day.otherNotes}")
         }
     }
 }

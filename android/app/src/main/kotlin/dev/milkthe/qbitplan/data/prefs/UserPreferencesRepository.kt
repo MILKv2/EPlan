@@ -20,7 +20,7 @@ class UserPreferencesRepository @Inject constructor(
     private val dataStore: DataStore<Preferences>,
 ) {
     val preferences: Flow<UserPreferences> = dataStore.data
-        .catch { if (it is IOException) emit(emptyPreferences()) else throw it } // uszkodzony plik → domyślne
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it.toUserPreferences() }
 
     suspend fun setStudent(classId: String, classShort: String, groupNames: Set<String>) = dataStore.edit {
@@ -43,7 +43,6 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setNotificationsEnabled(enabled: Boolean) = dataStore.edit { it[NOTIFICATIONS] = enabled }
 
-    /** Powrót do onboardingu (zmiana trybu w ustawieniach). */
     suspend fun clearMode() = dataStore.edit { prefs: MutablePreferences -> prefs.remove(MODE) }
 
     private fun Preferences.toUserPreferences() = UserPreferences(

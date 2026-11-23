@@ -2,23 +2,22 @@ import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
-    // Kotlin jest wbudowany w AGP 9, więc nie trzeba osobnej wtyczki kotlin-android.
+    // No kotlin-android plugin: AGP 9 has built-in Kotlin.
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp) // generator kodu dla Hilt i Room
+    alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
 }
 
-// Wersja z tagu (CI ustawia QBIT_VERSION_NAME=v1.2.3); lokalnie "0.1.0-dev".
+// CI sets QBIT_VERSION_NAME from the tag (v1.2.3).
 val appVersionName: String = System.getenv("QBIT_VERSION_NAME")?.removePrefix("v") ?: "0.1.0-dev"
 
-// versionCode musi rosnąć z każdym wydaniem: 1.2.3 → 10203.
+// 1.2.3 → 10203
 val appVersionCode: Int = Regex("""^(\d+)\.(\d+)\.(\d+)""").find(appVersionName)
     ?.destructured?.let { (major, minor, patch) -> major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt() }
     ?: 1
 
-// Podpis wydania: ze zmiennych środowiskowych (CI) albo z keystore.properties
-// (lokalnie). Oba źródła są poza repo (zob. .gitignore).
+// Release signing comes from env vars (CI) or keystore.properties (local); both stay out of git.
 val keystoreProps = Properties().apply {
     rootProject.file("keystore.properties").takeIf { it.exists() }?.inputStream()?.use { load(it) }
 }
@@ -27,7 +26,7 @@ fun signingValue(env: String, prop: String): String? = System.getenv(env) ?: key
 
 android {
     namespace = "dev.milkthe.qbitplan"
-    // API 37 w wersji „minor” 2; wymagają tego biblioteki Compose.
+    // Compose libraries require API 37 minor 2.
     compileSdk {
         version = release(37) { minorApiLevel = 2 }
     }
@@ -60,7 +59,7 @@ android {
             signingConfig = signingConfigs.findByName("release")
         }
         debug {
-            applicationIdSuffix = ".debug" // debug i release mogą być zainstalowane obok siebie
+            applicationIdSuffix = ".debug"
         }
     }
 
@@ -76,7 +75,6 @@ android {
 }
 
 room {
-    // Schematy bazy trafiają do repo, żeby dało się pisać migracje.
     schemaDirectory("$projectDir/schemas")
 }
 

@@ -19,7 +19,6 @@ class SubstitutionsParserTest {
     private fun day(date: String): DaySubstitutions =
         SubstitutionsParser.parse(LocalDate.parse(date), Fixtures.substitutions(date))
 
-    /** Jedyny wiersz klasy [cls] na lekcji [period] (opcjonalnie danego typu). */
     private fun DaySubstitutions.row(cls: String, period: Int, type: SubstitutionType? = null): Substitution =
         substitutions.single {
             it.className == cls && it.periods?.first == period && (type == null || it.type == type)
@@ -73,7 +72,6 @@ class SubstitutionsParserTest {
         assertEquals(0, here.movedFromPeriod)
         assertEquals(Change.unchanged("Bartosz Ryś"), here.teacher)
 
-        // Ta sama lekcja 4 ma też odwołany „(4) Eob”.
         assertEquals(Change.unchanged("Eob"), d.row("2ct", 4, SubstitutionType.CANCELLED).subject)
     }
 
@@ -101,7 +99,7 @@ class SubstitutionsParserTest {
         assertEquals(listOf(AbsenceNote("A24", PeriodRange(4, 9)), AbsenceNote("A28", PeriodRange(4, 9))), d.unavailableClassrooms)
         assertEquals(AbsenceNote("Andrzej Bednarczyk", PeriodRange(3, 4)), d.absentTeachers[1])
         val s = d.substitutions.single { it.className == "1dt" && it.type == SubstitutionType.CLASS_ABSENT }
-        assertNull(s.periods) // „Cały dzień”
+        assertNull(s.periods)
         assertEquals("Nieobecność", s.whatText)
     }
 
@@ -131,21 +129,20 @@ class SubstitutionsParserTest {
 
     @Test
     fun `every fixture day parses fully`() {
-        // Liczba wierszy <tr> w każdym pliku (policzona niezależnie).
         val expectedRows = mapOf(
             "2026-09-10" to 71, "2026-10-15" to 60, "2026-11-20" to 50, "2026-11-21" to 0,
             "2026-11-23" to 43, "2026-11-24" to 55, "2026-11-25" to 16,
         )
         for ((date, raw) in Fixtures.allSubstitutionDays()) {
             val d = SubstitutionsParser.parse(LocalDate.parse(date), raw)
-            assertEquals(expectedRows[date], d.substitutions.size, "liczba wierszy $date")
-            assertTrue(d.generatedAt != null, "stopka $date")
-            assertTrue(d.otherNotes.isEmpty(), "nieznane nagłówki $date: ${d.otherNotes}")
+            assertEquals(expectedRows[date], d.substitutions.size, "row count $date")
+            assertTrue(d.generatedAt != null, "footer $date")
+            assertTrue(d.otherNotes.isEmpty(), "unknown headers $date: ${d.otherNotes}")
             for (s in d.substitutions) {
-                assertTrue(s.className.isNotBlank(), "klasa w $date: $s")
-                assertTrue(s.unknownParts.isEmpty(), "nieznane części w $date: $s")
-                assertTrue(s.periods != null || s.type == SubstitutionType.CLASS_ABSENT, "lekcja w $date: $s")
-                if (s.type != SubstitutionType.CLASS_ABSENT) assertTrue(s.subject != null, "przedmiot w $date: $s")
+                assertTrue(s.className.isNotBlank(), "class in $date: $s")
+                assertTrue(s.unknownParts.isEmpty(), "unknown parts in $date: $s")
+                assertTrue(s.periods != null || s.type == SubstitutionType.CLASS_ABSENT, "period in $date: $s")
+                if (s.type != SubstitutionType.CLASS_ABSENT) assertTrue(s.subject != null, "subject in $date: $s")
             }
         }
     }

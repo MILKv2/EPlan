@@ -21,7 +21,7 @@ class TimetableVersionsParserTest {
         assertEquals("listopad2026_RC3 (21.11. - 31.12.2026)", default.name)
         assertEquals(2026, default.schoolYear)
         assertFalse(default.hidden)
-        assertTrue(versions.versions.size > 100, "historia wszystkich lat")
+        assertTrue(versions.versions.size > 100, "history of all years")
     }
 
     @Test

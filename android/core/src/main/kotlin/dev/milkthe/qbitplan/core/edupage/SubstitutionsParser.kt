@@ -14,23 +14,19 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-/**
- * Parser odpowiedzi `getSubstViewerDayDataHtml` (HTML zastępstw na dzień).
- * Gramatyka opisana w docs/edupage-api.md, sekcja 3.
- */
+/** Parses `getSubstViewerDayDataHtml`. Grammar: docs/edupage-api.md, section 3. */
 object SubstitutionsParser {
 
-    /** [raw] = cała odpowiedź serwera: `{"r": "<div>…</div>"}`. */
     fun parse(date: LocalDate, raw: String): DaySubstitutions {
         val html = (EdupageJson.unwrap(raw) as? JsonPrimitive)?.content
-            ?: throw EdupageException("Zastępstwa: pole \"r\" nie jest tekstem")
+            ?: throw EdupageException("Substitutions: \"r\" is not a string")
         return parseHtml(date, html)
     }
 
     fun parseHtml(date: LocalDate, html: String): DaySubstitutions {
         val doc = Jsoup.parseBodyFragment(html)
         val dayRoot = doc.selectFirst("div[data-date]")
-            // Brak tabeli = sam komunikat, np. „Zastępstwa nie zostały jeszcze opublikowane.”
+            // No table: just a message, e.g. "Zastępstwa nie zostały jeszcze opublikowane."
             ?: return emptyDay(date, message = doc.text().clean().ifBlank { null })
 
         val absentTeachers = mutableListOf<AbsenceNote>()
@@ -38,7 +34,6 @@ object SubstitutionsParser {
         val unavailableRooms = mutableListOf<AbsenceNote>()
         val otherNotes = mutableListOf<String>()
 
-        // Nagłówki: <div style="text-align:center"><span>Etykieta: a , b (2)</span></div>
         for (span in dayRoot.select("> div > span")) {
             val text = span.text().clean()
             val label = text.substringBefore(':', missingDelimiterValue = "").trim().lowercase()
@@ -53,7 +48,7 @@ object SubstitutionsParser {
 
         val substitutions = mutableListOf<Substitution>()
         var message: String? = null
-        // Jeden <tbody> na klasę; nazwa klasy tylko w pierwszym wierszu (rowspan).
+        // One <tbody> per class; the class name is only in the first row (rowspan).
         for (tbody in dayRoot.select("table > tbody")) {
             var className = ""
             for (row in tbody.select("> tr")) {
@@ -63,7 +58,6 @@ object SubstitutionsParser {
                 val info = row.selectFirst("> td.info > span")
                 val whatText = what?.text()?.clean().orEmpty()
                 val infoText = info?.text()?.clean().orEmpty()
-                // Wiersz-komunikat: „W tym dniu nie ma żadnych zastępstw.”
                 if (className.isEmpty() && periodText.isEmpty() && whatText.isEmpty()) {
                     if (infoText.isNotEmpty()) message = infoText
                     continue
@@ -92,7 +86,7 @@ object SubstitutionsParser {
         whatText: String,
         infoText: String,
     ): Substitution {
-        // ── kolumna „what”: [grupy: ]przedmiot ──
+        // "what" column: [groups: ]subject
         val classAbsent = what?.selectFirst("img[src*=absent]") != null
         var groups = emptyList<String>()
         var subject: Change? = null
@@ -109,7 +103,7 @@ object SubstitutionsParser {
             subject = parseChange(subjectPart)
         }
 
-        // ── kolumna „info”: części oddzielone przecinkami ──
+        // "info" column: comma-separated, mostly labelled parts
         var teacher: Change? = null
         var classroom: Change? = null
         var cancelled = false
@@ -132,15 +126,15 @@ object SubstitutionsParser {
                     cancelled = true
                 WITHOUT_CLASS.matches(part) ->
                     withoutClasses += WITHOUT_CLASS.matchEntire(part)!!.groupValues[1].split(",").map { it.trim() }
-                // Samo przekreślone nazwisko = nauczyciel bez zastępcy.
+                // A struck-out name alone = no substitute assigned.
                 part.startsWith(STRIKE_START) && part.endsWith(STRIKE_END) -> teacher = parseChange(part)
-                // Gołe nazwisko (przy „Anulowano” / „Moved to period”).
+                // Bare name, as in "X, Anulowano" / "X, Moved to period: 4".
                 teacher == null && STRIKE_START !in part -> teacher = Change.unchanged(part)
                 else -> unknown += part.stripMarkers()
             }
         }
 
-        // Kolejność ma znaczenie: od najbardziej szczegółowego przypadku.
+        // Most specific first.
         val type = when {
             classAbsent -> SubstitutionType.CLASS_ABSENT
             cancelled -> SubstitutionType.CANCELLED
@@ -167,10 +161,9 @@ object SubstitutionsParser {
         )
     }
 
-    // ───────────────────────── pomocnicze ─────────────────────────
 
-    // <s>…</s> zamieniamy na znaki-znaczniki, żeby dalej pracować na zwykłym
-    // tekście, nie gubiąc informacji „co było przekreślone”.
+    // <s>…</s> becomes marker chars so the rest can work on plain text
+    // without losing what was struck out.
     private const val STRIKE_START = '\u0001'
     private const val STRIKE_END = '\u0002'
 
@@ -181,8 +174,7 @@ object SubstitutionsParser {
     private val GENERATED_AT = Regex("(\\d{2}\\.\\d{2}\\.\\d{4} \\d{1,2}:\\d{2}:\\d{2})")
     private val GENERATED_AT_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy H:mm:ss")
 
-    // Etykiety po polsku i (na zapas) po angielsku; część EduPage zostawia
-    // nieprzetłumaczoną („Moved to period”).
+    // EduPage leaves some labels untranslated ("Moved to period"), so accept both languages.
     private val TEACHER_CHANGE_LABELS = setOf("zastępstwa", "zastępstwo", "substitution", "substitutions")
     private val TEACHER_LABELS = setOf("nauczyciel", "teacher")
     private val CLASSROOM_LABELS = setOf("zmień salę lekcyjną", "change classroom", "sala", "classroom")
@@ -193,7 +185,6 @@ object SubstitutionsParser {
         date, emptyList(), emptyList(), emptyList(), emptyList(), emptyList(), message, null,
     )
 
-    /** Tekst elementu, w którym zawartość <s> jest otoczona znacznikami, a obrazki pominięte. */
     private fun Element.markedText(): String = buildString {
         for (node in childNodes()) {
             when {
@@ -218,7 +209,7 @@ object SubstitutionsParser {
         return Change(old.ifEmpty { null }, new.ifEmpty { null })
     }
 
-    /** "4" / "3 - 4" / "(4)" / "(1 - 2)" → zakres; „Cały dzień” i pusty → null. */
+    /** "4", "3 - 4", "(4)", "(1 - 2)" → range; "Cały dzień" and empty → null. */
     private fun parsePeriods(text: String): PeriodRange? {
         val match = PERIODS.matchEntire(text.trim()) ?: return null
         val first = match.groupValues[1].toInt()
@@ -226,7 +217,6 @@ object SubstitutionsParser {
         return PeriodRange(minOf(first, last), maxOf(first, last))
     }
 
-    /** "Jan Kowalski , Anna Nowak  (2), Sala (0 - 4)" → wpisy. */
     private fun parseAbsences(text: String): List<AbsenceNote> =
         text.splitTopLevel().mapNotNull { entry ->
             val match = ABSENCE.matchEntire(entry.trim()) ?: return@mapNotNull null
@@ -242,7 +232,7 @@ object SubstitutionsParser {
         return runCatching { LocalDateTime.parse(stamp, GENERATED_AT_FORMAT) }.getOrNull()
     }
 
-    /** Dzieli po przecinkach, ale nie wewnątrz nawiasów: "(Bez klasy 1a, 2b)" zostaje w całości. */
+    /** Splits on commas outside parentheses, so "(Bez klasy 1a, 2b)" stays whole. */
     private fun String.splitTopLevel(): List<String> {
         val parts = mutableListOf<String>()
         var depth = 0
@@ -265,6 +255,5 @@ object SubstitutionsParser {
 
     private fun Element.cellText(cssClass: String): String = selectFirst("> td.$cssClass")?.text()?.clean().orEmpty()
 
-    /** Zamienia twarde spacje na zwykłe i zwija wielokrotne spacje. */
     private fun String.clean(): String = replace(' ', ' ').replace(Regex(" {2,}"), " ").trim()
 }

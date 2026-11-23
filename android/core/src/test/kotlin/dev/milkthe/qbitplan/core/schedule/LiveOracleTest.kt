@@ -18,17 +18,16 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.minutes
 
 /**
- * Wyrocznia na żywo dla WSZYSTKICH klas: pobiera świeże zastępstwa i plan
- * bieżący EduPage (wyłączony w UI szkoły, ale endpoint odpowiada) i porównuje
- * z [DayPlanner]. Tylko narzędzie testowe, apka z planu bieżącego nie korzysta.
+ * Live oracle for every class: compares DayPlanner with EduPage's current timetable
+ * (hidden in the school's UI, but the endpoint responds). Test-only; the app doesn't use it.
  *
- *   QBIT_LIVE=1 ./gradlew :core:test --tests '*LiveOracleTest*' --rerun
+ *   QBIT_LIVE=1 ./gradlew :core:test --tests '*LiveOracleTest*' --rerun -i
  */
 class LiveOracleTest {
 
     @Test
     fun `planner matches live current timetable for all classes`() = runTest(timeout = 5.minutes) {
-        assumeTrue("Ustaw QBIT_LIVE=1", System.getenv("QBIT_LIVE") == "1")
+        assumeTrue("Set QBIT_LIVE=1", System.getenv("QBIT_LIVE") == "1")
         val client = OkHttpClient()
         val api = OkHttpEdupageApi(client)
         val today = LocalDate.now()
@@ -53,13 +52,13 @@ class LiveOracleTest {
                 val expected = oracle[date.toString()].orEmpty()
                 compared++
                 if (ours != expected) {
-                    mismatches += "${schoolClass.short} $date\n  tylko wyrocznia: ${expected - ours.toSet()}\n  tylko my:        ${ours - expected.toSet()}"
+                    mismatches += "${schoolClass.short} $date\n  oracle only: ${expected - ours.toSet()}\n  ours only:   ${ours - expected.toSet()}"
                 }
             }
         }
-        println("Porównano $compared dni-klas, różnic: ${mismatches.size}")
+        println("Compared $compared class-days, mismatches: ${mismatches.size}")
         mismatches.forEach(::println)
-        assertTrue(mismatches.isEmpty(), "Różnice: ${mismatches.size} (szczegóły w logu)")
+        assertTrue(mismatches.isEmpty(), "Mismatches: ${mismatches.size} (see log)")
     }
 
     private fun fetchCurrent(client: OkHttpClient, year: Int, classId: String, from: LocalDate, to: LocalDate): String {

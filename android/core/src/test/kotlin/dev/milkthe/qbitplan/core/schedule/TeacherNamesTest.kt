@@ -15,13 +15,13 @@ class TeacherNamesTest {
         val days = Fixtures.allSubstitutionDays().map { (date, raw) -> SubstitutionsParser.parse(LocalDate.parse(date), raw) }
         val names = knownTeacherNames(days)
 
-        assertTrue("Anna Grzebień" in names) // zastępczyni
-        assertTrue("Wojciech Książkiewicz" in names) // nieobecny
-        assertTrue("Barbara Wojtanowska-Słabik" in names) // nazwisko z myślnikiem
-        assertEquals(names.size, names.map { normalizeName(it) }.toSet().size, "bez duplikatów")
+        assertTrue("Anna Grzebień" in names)
+        assertTrue("Wojciech Książkiewicz" in names)
+        assertTrue("Barbara Wojtanowska-Słabik" in names)
+        assertEquals(names.size, names.map { normalizeName(it) }.toSet().size, "no duplicates")
         assertTrue(names.none { "Nieobecność" in it || "W tym dniu" in it })
 
-        // Polskie sortowanie po nazwisku: Góral przed Grzebień, Ł po L.
+        // Polish collation by surname: Góral before Grzebień, Ł after L.
         assertTrue(names.indexOf("Jolanta Góral") < names.indexOf("Anna Grzebień"))
         val surnames = names.map { it.substringAfterLast(' ') }
         val firstL = surnames.indexOfFirst { it.startsWith("L") }

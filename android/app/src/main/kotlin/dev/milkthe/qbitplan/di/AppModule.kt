@@ -24,13 +24,8 @@ import java.time.Clock
 import java.time.Duration
 import javax.inject.Singleton
 
-/**
- * Hilt: „przepis”, jak zbudować zależności. Klasy z `@Inject constructor`
- * Hilt tworzy sam; tutaj są tylko te, których nie da się tak oznaczyć
- * (klasy z bibliotek, interfejsy).
- */
 @Module
-@InstallIn(SingletonComponent::class) // jedna instancja na całą aplikację
+@InstallIn(SingletonComponent::class)
 object AppModule {
 
     @Provides
@@ -55,7 +50,7 @@ object AppModule {
     @Singleton
     fun database(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "qbitplan.db")
-            // To tylko cache: przy zmianie schematu można go wyrzucić.
+            // Only a cache, safe to drop on schema change.
             .fallbackToDestructiveMigration(dropAllTables = true)
             .build()
 
@@ -74,7 +69,6 @@ object AppModule {
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class BindingsModule {
-    // @Binds = „gdy ktoś chce ResponseCache, daj RoomResponseCache”.
     @Binds
     abstract fun responseCache(impl: RoomResponseCache): ResponseCache
 }

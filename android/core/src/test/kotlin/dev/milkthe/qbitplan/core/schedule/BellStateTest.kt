@@ -29,8 +29,8 @@ class BellStateTest {
         val state = assertIs<BellState.DuringLesson>(bellStateAt(periods, LocalTime.of(8, 0)))
         assertEquals(1, state.period.number)
         assertEquals(Duration.ofMinutes(40), state.untilBell(LocalTime.of(8, 0)))
-        assertEquals(1, periodAt(periods, LocalTime.of(7, 55))) // początek należy do lekcji
-        assertNull(periodAt(periods, LocalTime.of(8, 40))) // koniec już nie
+        assertEquals(1, periodAt(periods, LocalTime.of(7, 55)))
+        assertNull(periodAt(periods, LocalTime.of(8, 40)))
     }
 
     @Test

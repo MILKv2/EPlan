@@ -19,23 +19,17 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import java.time.LocalTime
 
-/**
- * Parser odpowiedzi `regularttGetData` (plan stały wszystkich klas).
- * Format opisany w docs/edupage-api.md, sekcja 2.
- */
+/** Parses `regularttGetData`. Format: docs/edupage-api.md, section 2. */
 object RegularTimetableParser {
 
     fun parse(raw: String, ttNum: String): Timetable {
         val result = try {
             EdupageJson.json.decodeFromJsonElement(ResultDto.serializer(), EdupageJson.unwrap(raw))
         } catch (e: SerializationException) {
-            throw EdupageException("Nieoczekiwany format planu", e)
+            throw EdupageException("Unexpected timetable format", e)
         }
-        // Tabele są listą {id, data_rows}; robimy z nich mapę id → wiersze.
         val tables = result.dbiAccessorRes.tables.associate { it.id to it.rows }
 
-        // Pomocnik: dekoduje wiersze tabeli `name` do podanego DTO.
-        // <T> = typ generyczny, ustalany przy wywołaniu (np. PeriodDto).
         fun <T> rows(name: String, serializer: KSerializer<T>): List<T> =
             tables[name].orEmpty().map { EdupageJson.json.decodeFromJsonElement(serializer, it) }
 
@@ -43,7 +37,7 @@ object RegularTimetableParser {
         val periods = periodDtos.map {
             Period(it.period.toInt(), it.name, LocalTime.parse(it.startTime), LocalTime.parse(it.endTime))
         }.sortedBy { it.number }
-        // Karta wskazuje lekcję przez `id` wiersza periods, nie przez numer.
+        // Cards reference the periods row id, not the period number.
         val periodNumberById = periodDtos.associate { it.id to it.period.toInt() }
 
         val days = rows("days", NamedDto.serializer()).map { SchoolDay(it.id.toInt(), it.name, it.short) }
@@ -55,7 +49,7 @@ object RegularTimetableParser {
         val lessons = rows("cards", CardDto.serializer()).flatMap { card ->
             val lesson = lessonsById[card.lessonId]
             val start = periodNumberById[card.period]
-            // Karta bez lekcji/godziny/dnia = nierozmieszczona w planie, pomijamy.
+            // Unplaced cards have no period/days.
             if (lesson == null || start == null) return@flatMap emptyList()
             val weekSet = card.weeks.indicesOf('1').toSet().ifEmpty { allWeeks }
             card.days.indicesOf('1').map { day ->
@@ -98,7 +92,6 @@ object RegularTimetableParser {
         )
     }
 
-    /** "00100".indicesOf('1') == [2] */
     private fun String.indicesOf(char: Char): List<Int> = indices.filter { this[it] == char }
 
     @Serializable

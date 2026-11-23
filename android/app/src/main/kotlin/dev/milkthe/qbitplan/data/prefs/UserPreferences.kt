@@ -5,21 +5,18 @@ enum class UserMode { STUDENT, TEACHER }
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
 
 /**
- * Ustawienia użytkownika (DataStore).
- *
- * Klasy i nauczycieli zapisujemy po ID (stałe między wersjami planu), a do
- * tego skrót, żeby dało się odnaleźć wpis, gdyby ID kiedyś się zmieniło.
- * Grupy zapisujemy po **nazwach**, bo ich ID zmieniają się z każdą wersją planu.
+ * Classes and teachers are stored by id (stable across timetable versions) plus their short
+ * as a fallback. Groups are stored by NAME because their ids change with every version.
  */
 data class UserPreferences(
-    /** `null` = onboarding nieukończony. */
+    /** `null` = onboarding not finished. */
     val mode: UserMode? = null,
     val classId: String? = null,
     val classShort: String? = null,
     val groupNames: Set<String> = emptySet(),
     val teacherId: String? = null,
     val teacherShort: String? = null,
-    /** Imię i nazwisko z zastępstw, łączy plan (skróty) z zastępstwami. */
+    /** Full name as used in substitutions; links the plan (shorts) to substitutions. */
     val teacherFullName: String? = null,
     val theme: ThemeMode = ThemeMode.SYSTEM,
     val notificationsEnabled: Boolean = false,

@@ -17,7 +17,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-/** Sprawdza, że wysyłamy dokładnie takie zapytania, jak przeglądarka. */
 class OkHttpEdupageApiTest {
 
     private val server = MockWebServer()

@@ -8,7 +8,6 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import javax.inject.Inject
 
-/** [ResponseCache] na Room; kompresuje treść gzipem. */
 class RoomResponseCache @Inject constructor(
     private val dao: CachedResponseDao,
 ) : ResponseCache {
@@ -38,7 +37,6 @@ class RoomResponseCache @Inject constructor(
 
     private fun gzip(text: String): ByteArray {
         val out = ByteArrayOutputStream()
-        // `use` zamyka strumień nawet przy wyjątku (jak try-with-resources).
         GZIPOutputStream(out).use { it.write(text.toByteArray(Charsets.UTF_8)) }
         return out.toByteArray()
     }

@@ -29,7 +29,7 @@ class SchoolRepositoryTest {
     private fun fixture(path: String) = File(fixtures, path).readText()
 
     private val zone = ZoneId.of("Europe/Warsaw")
-    private val clock = MutableClock(Instant.parse("2026-11-23T09:00:00Z"), zone) // poniedziałek
+    private val clock = MutableClock(Instant.parse("2026-11-23T09:00:00Z"), zone) // Monday
     private val api = FakeApi()
     private val cache = InMemoryCache()
     private val repo = SchoolRepository(api, cache, clock)
@@ -57,7 +57,7 @@ class SchoolRepositoryTest {
         clock.advance(Duration.ofHours(1))
         repo.refresh()
         assertEquals(listOf("189"), api.timetableCalls)
-        assertEquals(2, api.versionCalls.size, "lista wersji przy każdym odświeżeniu")
+        assertEquals(2, api.versionCalls.size, "versions fetched on every refresh")
     }
 
     @Test
@@ -122,13 +122,11 @@ class SchoolRepositoryTest {
 
     @Test
     fun `default dates skip the weekend`() {
-        clock.now = Instant.parse("2026-11-27T09:00:00Z") // piątek
+        clock.now = Instant.parse("2026-11-27T09:00:00Z") // Friday
         assertEquals(listOf(LocalDate.of(2026, 11, 27), LocalDate.of(2026, 11, 30)), repo.defaultSubstitutionDates())
-        clock.now = Instant.parse("2026-11-28T09:00:00Z") // sobota
+        clock.now = Instant.parse("2026-11-28T09:00:00Z") // Saturday
         assertEquals(listOf(LocalDate.of(2026, 11, 28), LocalDate.of(2026, 11, 30)), repo.defaultSubstitutionDates())
     }
-
-    // ───────────────────────── atrapy ─────────────────────────
 
     private inner class FakeApi : EdupageApi {
         val versionCalls = mutableListOf<Int>()

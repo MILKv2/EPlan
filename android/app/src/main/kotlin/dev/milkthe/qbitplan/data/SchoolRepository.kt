@@ -27,21 +27,16 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Dane z cache razem z chwilą pobrania (do banera „dane z …”). */
 data class Cached<T>(val value: T, val fetchedAt: Instant)
 
-/** Wynik odświeżania. `sealed` = zamknięty zbiór wariantów (when musi obsłużyć wszystkie). */
 sealed interface RefreshResult {
     data object Success : RefreshResult
     data class Failure(val error: Throwable) : RefreshResult
 }
 
 /**
- * Jedyne źródło danych o planie i zastępstwach dla reszty aplikacji.
- *
- * Zasada offline-first: UI zawsze czyta z cache (Flow), a [refresh] tylko
- * dociąga nowe dane z EduPage i zapisuje je do cache. Brak sieci = UI dalej
- * pokazuje ostatnie dane, a wynik [RefreshResult.Failure] pozwala pokazać baner.
+ * Offline-first: the UI always reads from the cache and [refresh] only updates it,
+ * so without network the last data stays visible and [RefreshResult.Failure] drives the banner.
  */
 @Singleton
 class SchoolRepository @Inject constructor(
@@ -49,38 +44,35 @@ class SchoolRepository @Inject constructor(
     private val cache: ResponseCache,
     private val clock: Clock,
 ) {
-    private val refreshMutex = Mutex() // dwa równoległe odświeżenia nie mają sensu
+    private val refreshMutex = Mutex()
 
-    /** Plan stały z cache; emituje ponownie po każdej zmianie. */
     val timetable: Flow<Cached<Timetable>?> = cache.observe(KEY_TIMETABLE)
         .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
         .map { entry -> entry?.parseOrNull { RegularTimetableParser.parse(it.body, it.version.orEmpty()) } }
-        .flowOn(Dispatchers.Default) // parsowanie 680 KB poza wątkiem UI
+        .flowOn(Dispatchers.Default)
 
-    /** Zastępstwa na dzień z cache. */
     fun substitutions(date: LocalDate): Flow<Cached<DaySubstitutions>?> = cache.observe(substitutionsKey(date))
         .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
         .map { entry -> entry?.parseOrNull { SubstitutionsParser.parse(date, it.body) } }
         .flowOn(Dispatchers.Default)
 
-    /** Chwila ostatniego udanego odświeżenia (lista wersji pobierana jest zawsze). */
+    /** Versions are fetched on every refresh, so this is the last successful refresh. */
     val lastRefresh: Flow<Instant?> = cache.observe(KEY_VERSIONS).map { it?.fetchedAt }
 
     /**
-     * Pobiera aktualną wersję planu (przy każdym odświeżeniu, bo `default_num`
-     * się zmienia), plan stały, jeśli jest nowa wersja albo stary jest
-     * przeterminowany, oraz zastępstwa na [substitutionDates].
+     * `default_num` changes every few weeks, so the version list is fetched every time;
+     * the timetable only when the version changed or the cached copy is stale.
      */
     suspend fun refresh(substitutionDates: List<LocalDate> = defaultSubstitutionDates()): RefreshResult =
         refreshMutex.withLock {
             runRefresh {
                 val ttNum = fetchVersions().defaultTtNum
-                    ?: throw EdupageException("Szkoła nie opublikowała planu na ten rok")
+                    ?: throw EdupageException("No default timetable published for this school year")
 
                 val cached = cache.get(KEY_TIMETABLE)
                 if (cached == null || cached.version != ttNum || cached.isOlderThan(TIMETABLE_MAX_AGE)) {
                     val raw = api.fetchRegularTimetable(ttNum)
-                    RegularTimetableParser.parse(raw, ttNum) // walidacja: zła odpowiedź nie nadpisze cache
+                    RegularTimetableParser.parse(raw, ttNum) // validate before overwriting the cache
                     cache.put(CachedEntry(KEY_TIMETABLE, raw, ttNum, clock.instant()))
                 }
 
@@ -91,7 +83,6 @@ class SchoolRepository @Inject constructor(
             }
         }
 
-    /** Odświeża zastępstwa tylko na jeden dzień (np. po wyborze dnia w zakładce Zastępstwa). */
     suspend fun refreshSubstitutions(date: LocalDate): RefreshResult = runRefresh { fetchSubstitutions(date) }
 
     private suspend fun fetchVersions(): TimetableVersions {
@@ -99,7 +90,7 @@ class SchoolRepository @Inject constructor(
         var raw = api.fetchTimetableVersions(year)
         var versions = TimetableVersionsParser.parse(raw)
         if (versions.defaultTtNum == null) {
-            // Początek roku szkolnego: nowy rok może nie mieć jeszcze planu.
+            // Early in the school year the new year may have no timetable yet.
             raw = api.fetchTimetableVersions(year - 1)
             versions = TimetableVersionsParser.parse(raw)
         }
@@ -109,7 +100,7 @@ class SchoolRepository @Inject constructor(
 
     private suspend fun fetchSubstitutions(date: LocalDate) {
         val raw = api.fetchSubstitutions(date)
-        SubstitutionsParser.parse(date, raw) // walidacja
+        SubstitutionsParser.parse(date, raw) // validate before overwriting the cache
         cache.put(CachedEntry(substitutionsKey(date), raw, null, clock.instant()))
     }
 
@@ -117,12 +108,12 @@ class SchoolRepository @Inject constructor(
         block()
         RefreshResult.Success
     } catch (e: CancellationException) {
-        throw e // anulowanie korutyny musi przejść dalej
+        throw e
     } catch (e: Exception) {
         RefreshResult.Failure(e)
     }
 
-    /** Dziś i najbliższy dzień nauki (w piątek/weekend: poniedziałek). */
+    /** Today and the next school day. */
     fun defaultSubstitutionDates(): List<LocalDate> {
         val today = LocalDate.now(clock)
         var next = today.plusDays(1)
@@ -132,7 +123,7 @@ class SchoolRepository @Inject constructor(
 
     private fun CachedEntry.isOlderThan(age: Duration) = fetchedAt.plus(age).isBefore(clock.instant())
 
-    // Uszkodzony wpis w cache (np. po zmianie formatu) traktujemy jak brak danych.
+    // A cache entry the parser no longer accepts is treated as missing.
     private inline fun <T> CachedEntry.parseOrNull(parse: (CachedEntry) -> T): Cached<T>? =
         runCatching { Cached(parse(this), fetchedAt) }.getOrNull()
 
@@ -141,10 +132,10 @@ class SchoolRepository @Inject constructor(
         const val KEY_TIMETABLE = "timetable"
         const val SUBSTITUTIONS_PREFIX = "subst:"
 
-        /** Klucz z datą ISO, więc porównanie tekstowe = porównanie dat. */
+        /** ISO date in the key, so string comparison = date comparison (used for pruning). */
         fun substitutionsKey(date: LocalDate) = "$SUBSTITUTIONS_PREFIX$date"
 
-        /** Nawet bez zmiany wersji pobieramy plan ponownie co tyle (szkoła może poprawić wersję). */
+        /** Re-download even without a version change: the school may edit a version in place. */
         val TIMETABLE_MAX_AGE: Duration = Duration.ofHours(12)
         const val SUBSTITUTIONS_KEEP_DAYS = 7L
     }

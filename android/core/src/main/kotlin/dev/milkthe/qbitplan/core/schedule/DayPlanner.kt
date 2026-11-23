@@ -11,28 +11,19 @@ import dev.milkthe.qbitplan.core.model.TimetableLesson
 import java.time.LocalDate
 
 /**
- * Nakłada zastępstwa dnia na plan stały.
+ * Overlays a day's substitutions on the regular timetable.
  *
- * Jak to działa:
- * 1. Lekcje klasy z danego dnia rozbijamy na **pojedyncze godziny** (sloty),
- *    bo zastępstwo może dotyczyć tylko części lekcji (np. 4. z 4-5).
- * 2. Każdy wiersz zastępstw dopasowujemy do slotów tej klasy po: godzinie,
- *    przedmiocie (stary skrót) i grupach. Niedopasowany wiersz staje się
- *    osobnym kafelkiem, żeby żadna informacja nie zginęła.
- * 3. Sąsiednie sloty tej samej lekcji w identycznym stanie sklejamy
- *    z powrotem (np. 6-8).
+ * Lessons are split into single periods first, because a substitution can
+ * cover only part of a multi-period lesson (e.g. period 4 of 4-5). Rows that
+ * match nothing become their own tiles so no information is lost. Adjacent
+ * periods of the same lesson in the same state are merged back at the end.
  *
- * Widoki nauczyciela i sali korzystają z tych samych wyników dla klas
- * (zastępstwa publikowane są per klasa).
- *
- * [weekIndex] (0 = tydzień A, 1 = B): `null` = nie filtruj po tygodniach.
+ * Substitutions are published per class, so teacher and classroom views are
+ * built from the per-class results.
  */
 class DayPlanner(private val tt: Timetable) {
 
-    /**
-     * Plan ucznia. [selectedGroupNames] = wybrane grupy (nazwy),
-     * `null` = wszystkie grupy klasy.
-     */
+    /** [selectedGroupNames] `null` = all groups of the class. */
     fun forClass(
         classId: String,
         date: LocalDate,
@@ -52,9 +43,8 @@ class DayPlanner(private val tt: Timetable) {
     }
 
     /**
-     * Plan nauczyciela: jego lekcje z planu (także te, w których ktoś go
-     * zastępuje) oraz lekcje, w których on zastępuje. [fullName] pochodzi
-     * z ustawień i łączy plan (skróty) z zastępstwami (pełne nazwiska).
+     * The teacher's own lessons (including ones someone else covers) plus lessons
+     * they cover. [fullName] links plan shorts to the full names used in substitutions.
      */
     fun forTeacher(
         teacherId: String,
@@ -77,7 +67,7 @@ class DayPlanner(private val tt: Timetable) {
         return merge(dedupeAcrossClasses(slots))
     }
 
-    /** Plan sali: lekcje, które w niej są (po zmianach), i te, które z niej wyprowadzono. */
+    /** Lessons held in the room after changes, plus lessons moved out of it. */
     fun forClassroom(
         classroomId: String,
         date: LocalDate,
@@ -91,10 +81,7 @@ class DayPlanner(private val tt: Timetable) {
         return merge(slots)
     }
 
-    /**
-     * Wolne sale na lekcji [period]: bez lekcji (po zmianach) i nie
-     * wymienione w „Niedostępne sale szkolne”.
-     */
+    /** Rooms with no lesson after changes and not listed as unavailable. */
     fun freeClassrooms(
         date: LocalDate,
         period: Int,
@@ -111,9 +98,6 @@ class DayPlanner(private val tt: Timetable) {
         return tt.classrooms.values.filter { it.short !in occupied }.sortedBy { it.short }
     }
 
-    // ───────────────────────── rdzeń: jedna klasa ─────────────────────────
-
-    /** Jedna godzina lekcji jednej klasy po nałożeniu zastępstw. */
     private data class Slot(
         val period: Int,
         val status: LessonStatus,
@@ -137,16 +121,15 @@ class DayPlanner(private val tt: Timetable) {
         val schoolClass = tt.classes[classId] ?: return emptyList()
         val day = date.schoolDayIndex()
 
-        // `slots` to lista modyfikowalna; sloty podmieniamy po dopasowaniu zastępstwa.
         val slots = tt.lessons
             .filter { classId in it.classIds && it.day == day && (weekIndex == null || weekIndex in it.weeks) }
             .flatMap { lesson -> (lesson.periods.first..lesson.periods.last).map { baseSlot(lesson, it, classId) } }
             .toMutableList()
-        val matched = BooleanArray(slots.size) // które sloty dostały już zastępstwo
+        val matched = BooleanArray(slots.size)
         val extra = mutableListOf<Slot>()
 
         val rows = substitutions?.substitutions.orEmpty().filter { it.className == schoolClass.short }
-        // Najpierw wszystko poza „przeniesiona tutaj”, bo ta szuka swojej lekcji źródłowej.
+        // MOVED_HERE rows look up their source lesson, so handle them last.
         for (row in rows.sortedBy { it.type == SubstitutionType.MOVED_HERE }) {
             when (row.type) {
                 SubstitutionType.CLASS_ABSENT -> slots.indices
@@ -166,7 +149,7 @@ class DayPlanner(private val tt: Timetable) {
 
                 else -> {
                     val periods = row.periods
-                        // wiersz bez godziny (rzadkie): dotyczy wszystkich lekcji tego przedmiotu
+                        // Rare row without periods: applies to every lesson of the subject.
                         ?: PeriodRange(slots.minOfOrNull { it.period } ?: continue, slots.maxOf { it.period })
                     for (p in periods.first..periods.last) {
                         val targets = findTargets(slots, matched, p, row, classId)
@@ -185,7 +168,6 @@ class DayPlanner(private val tt: Timetable) {
         return slots + extra
     }
 
-    /** Sloty na godzinie [period], do których pasuje wiersz zastępstw. */
     private fun findTargets(
         slots: List<Slot>,
         matched: BooleanArray,
@@ -194,22 +176,22 @@ class DayPlanner(private val tt: Timetable) {
         classId: String,
     ): List<Int> {
         val atPeriod = slots.indices.filter { slots[it].period == period && slots[it].lesson != null }
-        // Wolne sloty mają pierwszeństwo przed już zmienionymi.
+        // Prefer slots no other row has claimed yet.
         val candidates = atPeriod.filter { !matched[it] }.ifEmpty { atPeriod }
         fun groupsOk(i: Int) = row.groups.isEmpty() || slots[i].groupNames.any { it in row.groups } ||
             (slots[i].groupNames.isEmpty() && tt.groupsOfClass(classId).none { it.name in row.groups })
         val oldSubject = row.subject?.old
         val bySubject = candidates.filter { slots[it].subject.old == oldSubject && groupsOk(it) }
         if (row.groups.isNotEmpty() && bySubject.size > 1) {
-            // EduPage wypisuje grupy CAŁEJ lekcji łączonej (także z innych klas),
-            // np. „Dziew1, Dziew2” = Dziew1 z 4bl + Dziew2 z 4fl. Jeśli któraś
-            // lekcja ma dokładnie taki zbiór grup, to ona jest celem.
+            // EduPage lists the group names of the WHOLE joint lesson, across classes:
+            // "Dziew1, Dziew2" in 4fl means 4bl/Dziew1 + 4fl/Dziew2. Prefer the lesson
+            // whose group set matches exactly.
             val rowGroups = row.groups.toSet()
             val exact = bySubject.filter { lessonWideGroupNames(slots[it].lesson!!) == rowGroups }
             if (exact.isNotEmpty()) return exact
         }
         if (bySubject.isNotEmpty()) return bySubject
-        // Przedmiot się nie zgadza (np. literówka): bierzemy tylko jednoznaczne dopasowanie po grupach.
+        // Subject mismatch: only accept an unambiguous match by groups.
         return candidates.filter { groupsOk(it) }.takeIf { it.size == 1 }.orEmpty()
     }
 
@@ -277,16 +259,10 @@ class DayPlanner(private val tt: Timetable) {
         substitution = row,
     )
 
-    // ───────────────────────── pomocnicze ─────────────────────────
-
-    /** Wszystkie sloty dnia (wszystkie klasy), lekcje łączone tylko raz. */
     private fun allSlots(date: LocalDate, substitutions: DaySubstitutions?, weekIndex: Int?): List<Slot> =
         dedupeAcrossClasses(tt.classes.keys.flatMap { resolveClass(it, date, substitutions, weekIndex) })
 
-    /**
-     * Lekcja kilku klas pojawia się w wyniku każdej z nich: zostawiamy jeden
-     * slot (ten z zastępstwem, jeśli jest) i sumujemy nazwy klas.
-     */
+    /** Joint lessons show up once per class; keep one slot (preferably with a substitution) and union the class names. */
     private fun dedupeAcrossClasses(slots: List<Slot>): List<Slot> {
         val (fromPlan, outsidePlan) = slots.partition { it.lesson != null && it.status != LessonStatus.MOVED_HERE }
         val deduped = fromPlan.groupBy { it.lesson!!.cardId to it.period }.values.map { same ->
@@ -296,11 +272,10 @@ class DayPlanner(private val tt: Timetable) {
         return deduped + outsidePlan.distinct()
     }
 
-    /** Skleja sąsiednie sloty tej samej lekcji w identycznym stanie. */
     private fun merge(slots: List<Slot>): List<PlannedLesson> {
         val sorted = slots.sortedWith(compareBy({ it.period }, { it.groupNames.joinToString() }, { it.subject.new }))
         val result = mutableListOf<PlannedLesson>()
-        val open = mutableListOf<Pair<Slot, IntRange>>() // ostatni slot + zakres w budowie
+        val open = mutableListOf<Pair<Slot, IntRange>>()
         for (slot in sorted) {
             val index = open.indexOfFirst { (last, range) -> range.last + 1 == slot.period && last.sameState(slot) }
             if (index >= 0) {
@@ -332,17 +307,16 @@ class DayPlanner(private val tt: Timetable) {
         substitution = substitution,
     )
 
-    /** Nazwy grup lekcji w obrębie klasy; „Cała klasa” → pusta lista. */
+    /** Group names within this class; "Cała klasa" → empty. */
     private fun groupNamesOf(lesson: TimetableLesson, classId: String): List<String> =
         lesson.groupIds.mapNotNull { tt.groups[it] }
             .filter { it.classId == classId && !it.entireClass }
             .map { it.name }
 
-    /** Nazwy grup całej lekcji (wszystkie klasy), bez „Cała klasa”. */
+    /** Group names of the whole lesson across classes. */
     private fun lessonWideGroupNames(lesson: TimetableLesson): Set<String> =
         lesson.groupIds.mapNotNull { tt.groups[it] }.filter { !it.entireClass }.map { it.name }.toSet()
 
-    /** Czy kafelek spoza planu (z grupami po nazwach) dotyczy ucznia z wybranymi grupami. */
     private fun isRelevantGroupNames(classId: String, names: List<String>, selectedIds: Set<String>): Boolean {
         if (names.isEmpty()) return true
         val classGroups = tt.groups.values.filter { it.classId == classId }
@@ -356,5 +330,5 @@ class DayPlanner(private val tt: Timetable) {
         this?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
 }
 
-/** 0 = poniedziałek … 6 = niedziela. */
+/** 0 = Monday … 6 = Sunday. */
 fun LocalDate.schoolDayIndex(): Int = dayOfWeek.value - 1

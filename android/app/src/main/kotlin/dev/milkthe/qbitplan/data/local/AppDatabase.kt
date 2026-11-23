@@ -11,20 +11,18 @@ import androidx.room.Upsert
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Wiersz tabeli cache. Treść jest skompresowana gzipem (plan stały ma
- * ~680 KB JSON-a, po kompresji ~60 KB); duże teksty w jednym wierszu SQLite
- * mogą przekroczyć limit okna kursora na Androidzie (2 MB).
+ * Bodies are gzipped: the regular timetable is ~680 KB of JSON (~60 KB compressed)
+ * and large rows can exceed Android's 2 MB CursorWindow.
  */
 @Entity(tableName = "cached_responses")
 class CachedResponseEntity(
     @PrimaryKey val key: String,
     @ColumnInfo(typeAffinity = ColumnInfo.BLOB) val gzippedBody: ByteArray,
     val version: String?,
-    /** Milisekundy od 1970-01-01 UTC. */
+    /** Epoch millis. */
     val fetchedAt: Long,
 )
 
-/** DAO = interfejs zapytań; Room generuje implementację (przez KSP). */
 @Dao
 interface CachedResponseDao {
     @Query("SELECT * FROM cached_responses WHERE `key` = :key")
@@ -33,7 +31,7 @@ interface CachedResponseDao {
     @Query("SELECT * FROM cached_responses WHERE `key` = :key")
     suspend fun get(key: String): CachedResponseEntity?
 
-    @Upsert // wstaw albo zastąp
+    @Upsert
     suspend fun upsert(entity: CachedResponseEntity)
 
     @Query("DELETE FROM cached_responses WHERE `key` LIKE :prefix || '%' AND `key` < :keyBelow")

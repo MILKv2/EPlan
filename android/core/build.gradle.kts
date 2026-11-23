@@ -15,12 +15,11 @@ kotlin {
 }
 
 dependencies {
-    // api = zależność widoczna też dla modułu :app (używa tych typów)
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.coroutines.core)
     api(libs.okhttp)
     implementation(libs.jsoup)
-    // Adnotacje @Nullable używane w API Jsoup (potrzebne tylko kompilatorowi).
+    // Jsoup's @Nullable annotations; needed only at compile time.
     compileOnly(libs.jspecify)
 
     testImplementation(libs.kotlin.test.junit)

@@ -4,24 +4,18 @@ import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
 /**
- * Cache surowych odpowiedzi EduPage. Trzymamy odpowiedzi „jak z serwera”
- * i parsujemy je przy odczycie, dzięki czemu:
- * - poprawka w parserze działa od razu na danych z cache (bez migracji bazy),
- * - nie potrzebujemy tabel odwzorowujących cały plan.
+ * Cache of raw EduPage responses, parsed on read: a parser fix applies to cached
+ * data immediately and there is no schema mirroring the timetable.
  */
 interface ResponseCache {
-    /** Emituje wpis przy każdej zmianie (null = brak). */
     fun observe(key: String): Flow<CachedEntry?>
     suspend fun get(key: String): CachedEntry?
     suspend fun put(entry: CachedEntry)
-    /** Usuwa wpisy, których klucz zaczyna się od [prefix] i jest mniejszy niż [keyBelow]. */
+    /** Deletes keys starting with [prefix] that sort below [keyBelow]. */
     suspend fun deleteWithPrefixBelow(prefix: String, keyBelow: String)
 }
 
-/**
- * Jeden wpis cache. [version] to dodatkowa informacja, np. numer wersji
- * planu (tt_num), z której pochodzi odpowiedź.
- */
+/** [version] is extra info, e.g. the tt_num the response belongs to. */
 data class CachedEntry(
     val key: String,
     val body: String,

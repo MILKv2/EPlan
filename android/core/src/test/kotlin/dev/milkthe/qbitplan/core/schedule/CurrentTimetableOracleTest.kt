@@ -8,12 +8,7 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-/**
- * Porównanie z wyrocznią: plan bieżący EduPage (fixtures/currenttt) ma
- * zastępstwa nałożone po stronie serwera. Nasz [DayPlanner] (plan stały
- * + HTML zastępstw) musi dać to samo, godzina po godzinie.
- * Wersja na żywo, dla wszystkich klas: LiveOracleTest.
- */
+/** DayPlanner vs EduPage's current timetable (substitutions applied server-side). Live version: LiveOracleTest. */
 class CurrentTimetableOracleTest {
 
     private val tt: Timetable by lazy { RegularTimetableParser.parse(Fixtures.regular189, "189") }

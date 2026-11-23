@@ -22,7 +22,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "QbitPlan"
 
-// :core – czysty Kotlin (bez Androida): modele, API EduPage, parsery, logika.
-//         Testy uruchamiają się na zwykłej JVM, szybko i bez emulatora.
-// :app  – aplikacja Android: UI (Compose), Hilt, Room, DataStore.
+// :core is plain Kotlin (models, EduPage client, parsers, logic) so its tests run on the JVM.
 include(":core", ":app")

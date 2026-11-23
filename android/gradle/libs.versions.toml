@@ -1,6 +1,3 @@
-# Katalog wersji: wszystkie zależności w jednym miejscu.
-# W plikach build.gradle.kts odwołujemy się do nich jako libs.<nazwa>
-# (myślniki zamieniają się na kropki, np. libs.androidx.core.ktx).
 
 [versions]
 agp = "9.5.2"

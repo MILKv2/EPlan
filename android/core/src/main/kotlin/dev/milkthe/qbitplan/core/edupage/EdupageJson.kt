@@ -7,31 +7,27 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 
-/** Wspólna konfiguracja JSON i rozpakowanie koperty `{"r": …}`. */
 internal object EdupageJson {
 
     val json = Json {
-        ignoreUnknownKeys = true // EduPage wysyła dużo pól, bierzemy tylko potrzebne
-        coerceInputValues = true // null w polu z wartością domyślną → domyślna
+        ignoreUnknownKeys = true
+        coerceInputValues = true
         explicitNulls = false
     }
 
-    /**
-     * Zwraca zawartość `r` albo rzuca [EdupageException] dla
-     * `{"e": …}`, `{"reload": true}` i `{"r": {"error": …}}`.
-     */
+    /** Returns `r`, or throws for `{"e": …}`, `{"reload": true}` and `{"r": {"error": …}}`. */
     fun unwrap(raw: String): JsonElement {
         val root = try {
             json.parseToJsonElement(raw).jsonObject
         } catch (e: SerializationException) {
-            throw EdupageException("Odpowiedź EduPage to nie JSON", e)
+            throw EdupageException("EduPage response is not JSON", e)
         } catch (e: IllegalArgumentException) {
-            throw EdupageException("Odpowiedź EduPage to nie obiekt JSON", e)
+            throw EdupageException("EduPage response is not a JSON object", e)
         }
-        root["e"]?.let { throw EdupageException("Błąd EduPage: ${it.textOrJson()}") }
-        if (root.containsKey("reload")) throw EdupageException("EduPage żąda przeładowania (zły __gsh?)")
-        val r = root["r"] ?: throw EdupageException("Brak pola \"r\" w odpowiedzi EduPage")
-        (r as? JsonObject)?.get("error")?.let { throw EdupageException("Błąd EduPage: ${it.textOrJson()}") }
+        root["e"]?.let { throw EdupageException("EduPage error: ${it.textOrJson()}") }
+        if (root.containsKey("reload")) throw EdupageException("EduPage asked for a reload (bad __gsh?)")
+        val r = root["r"] ?: throw EdupageException("Missing \"r\" in EduPage response")
+        (r as? JsonObject)?.get("error")?.let { throw EdupageException("EduPage error: ${it.textOrJson()}") }
         return r
     }
 

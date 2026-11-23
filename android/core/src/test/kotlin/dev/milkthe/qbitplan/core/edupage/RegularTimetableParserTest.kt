@@ -12,7 +12,6 @@ import kotlin.test.assertTrue
 
 class RegularTimetableParserTest {
 
-    // `by lazy` = policz raz, przy pierwszym użyciu (plan ma ~680 KB).
     private val tt: Timetable by lazy { RegularTimetableParser.parse(Fixtures.regular189, "189") }
 
     @Test
@@ -52,12 +51,12 @@ class RegularTimetableParserTest {
 
     @Test
     fun `expands cards into lessons and skips unplaced ones`() {
-        // 1268 kart, z czego 12 bez godziny/dnia; każda rozmieszczona ma dokładnie 1 dzień.
+        // 1268 cards, 12 of them unplaced; each placed card has exactly one day.
         assertEquals(1256, tt.lessons.size)
         val card1 = tt.lessons.single { it.cardId == "*1" }
-        assertEquals(3, card1.day) // "00010" = czwartek
-        assertEquals(PeriodRange(5, 6), card1.periods) // durationperiods = 2
-        assertEquals(setOf(0, 1), card1.weeks) // "11" = oba tygodnie
+        assertEquals(3, card1.day) // "00010" = Thursday
+        assertEquals(PeriodRange(5, 6), card1.periods)
+        assertEquals(setOf(0, 1), card1.weeks)
         assertEquals("-29", card1.subjectId)
         assertEquals(listOf("-35"), card1.teacherIds)
         assertEquals(listOf("-187"), card1.classIds)
@@ -66,8 +65,7 @@ class RegularTimetableParserTest {
 
     @Test
     fun `class 1at on Tuesday matches EduPage`() {
-        // Wartości policzone niezależnie (Python) z regulartt_189.json
-        // i zgodne z planem bieżącym EduPage (fixtures/currenttt).
+        // Computed independently (Python) and matching EduPage's current timetable.
         val expected = listOf(
             Row(1, 1, "hist", "MK", "Cała klasa", "A54"),
             Row(2, 2, "ZastMat", "RR", "Cała klasa", "A53"),
@@ -89,7 +87,6 @@ class RegularTimetableParserTest {
         val tuesday = tt.lessonsForClass("-210", selectedGroupIds = selected)
             .filter { it.day == 1 }.map { it.toRow() }
 
-        // 2. Grupa znika; „Religia” (inny podział, nic nie wybrano) zostaje.
         assertTrue(tuesday.none { it.group == "2. Grupa" })
         assertTrue(tuesday.any { it.group == "1. Grupa" && it.subject == "PEiE" })
         assertTrue(tuesday.any { it.group == "Religia" })

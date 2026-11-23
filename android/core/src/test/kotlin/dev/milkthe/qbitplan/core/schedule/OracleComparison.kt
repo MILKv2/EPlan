@@ -9,11 +9,9 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
- * Sprowadza wynik [DayPlanner] i plan bieżący EduPage (`curentttGetData`,
- * „wyrocznia”) do porównywalnych jednostek: jedna godzina jednej lekcji.
- *
- * Nauczycieli porównujemy tylko w lekcjach bez zmian, bo zastępcę znamy
- * z HTML-a po nazwisku, a wyrocznia podaje skrót.
+ * Normalises DayPlanner output and EduPage's current timetable (`curentttGetData`)
+ * to one unit per lesson period. Teachers are compared only for unchanged lessons:
+ * substitutes are full names in the HTML but shorts in the oracle.
  */
 class OracleComparison(private val tt: Timetable) {
 
@@ -23,7 +21,7 @@ class OracleComparison(private val tt: Timetable) {
         val groups: List<String>,
         val rooms: String,
         val flag: String, // "", "changed", "removed"
-        val teachers: String, // tylko dla flag == ""
+        val teachers: String,
     )
 
     fun fromPlanner(lessons: List<PlannedLesson>): List<Unit> = lessons.flatMap { lesson ->
@@ -45,7 +43,6 @@ class OracleComparison(private val tt: Timetable) {
         }
     }.sortedBy { it.toString() }
 
-    /** Odpowiedź `curentttGetData` → data (ISO) → jednostki. */
     fun fromOracle(raw: String): Map<String, List<Unit>> {
         val root = Json.parseToJsonElement(raw).jsonObject
         val items = root["r"]!!.jsonObject["ttitems"]!!.jsonArray.map { it.jsonObject }
@@ -72,10 +69,8 @@ class OracleComparison(private val tt: Timetable) {
     }
 
     /**
-     * Wyrocznia podaje nazwy grup całej lekcji, także z innych klas lekcji
-     * łączonej (np. WF 1dt „1. Grupa” + 1ct „2. Grupa” → ["1. Grupa", "2. Grupa"]).
-     * DayPlanner celowo zwraca tylko grupy danej klasy, więc do porównania
-     * odtwarzamy zachowanie wyroczni.
+     * The oracle reports group names of the whole joint lesson, across classes;
+     * DayPlanner keeps only the class's own groups, so mimic the oracle here.
      */
     private fun oracleGroups(lesson: PlannedLesson): List<String> =
         lesson.lesson?.groupIds?.mapNotNull { tt.groups[it] }?.filter { !it.entireClass }?.map { it.name }?.distinct()?.sorted()

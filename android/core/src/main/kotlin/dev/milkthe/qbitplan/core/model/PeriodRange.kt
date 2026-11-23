@@ -1,15 +1,11 @@
 package dev.milkthe.qbitplan.core.model
 
-/**
- * Zakres kolejnych lekcji (numerów z tabeli `periods`), np. 3-4.
- * Dla pojedynczej lekcji `first == last`.
- */
+/** Consecutive lesson numbers (from the `periods` table), inclusive. */
 data class PeriodRange(val first: Int, val last: Int) {
     init {
-        require(first <= last) { "Niepoprawny zakres lekcji: $first-$last" }
+        require(first <= last) { "Invalid period range: $first-$last" }
     }
 
-    /** Pozwala pisać `5 in range` (słowo `operator` włącza tę składnię). */
     operator fun contains(period: Int): Boolean = period in first..last
 
     fun overlaps(other: PeriodRange): Boolean = first <= other.last && other.first <= last
@@ -18,7 +14,6 @@ data class PeriodRange(val first: Int, val last: Int) {
 
     override fun toString(): String = if (first == last) "$first" else "$first-$last"
 
-    // companion object = "statyczne" elementy klasy: PeriodRange.single(4)
     companion object {
         fun single(period: Int) = PeriodRange(period, period)
     }

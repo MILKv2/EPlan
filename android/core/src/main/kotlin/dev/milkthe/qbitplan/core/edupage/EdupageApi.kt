@@ -18,14 +18,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 import java.time.LocalDate
 
-/**
- * Surowe odpowiedzi EduPage (tekst JSON). Parsowanie jest osobno
- * ([TimetableVersionsParser], [RegularTimetableParser], [SubstitutionsParser]),
- * żeby dało się trzymać surowe odpowiedzi w cache i parsować je ponownie.
- *
- * `suspend` = funkcja może „zawiesić się” (czekać na sieć) bez blokowania
- * wątku; wywołuje się ją z korutyny.
- */
+/** Returns raw response bodies; parsing is separate so raw responses can be cached and re-parsed. */
 interface EdupageApi {
     suspend fun fetchTimetableVersions(schoolYear: Int): String
     suspend fun fetchRegularTimetable(ttNum: String): String
@@ -53,8 +46,8 @@ class OkHttpEdupageApi(
         post("substitution/server/viewer.js", "getSubstViewerDayDataHtml", buildJsonArray {
             add(JsonNull)
             addJsonObject {
-                put("date", date.toString()) // ISO: 2026-11-24
-                put("mode", "classes") // tylko ten widok jest publiczny
+                put("date", date.toString())
+                put("mode", "classes") // the only public view
             }
         })
 
@@ -69,10 +62,9 @@ class OkHttpEdupageApi(
         }.toString().toRequestBody(JSON)
         val request = Request.Builder().url(url).post(body).build()
 
-        // Dispatchers.IO = pula wątków do operacji blokujących (sieć, dysk).
         return withContext(Dispatchers.IO) {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) throw EdupageException("HTTP ${response.code} dla $function")
+                if (!response.isSuccessful) throw EdupageException("HTTP ${response.code} for $function")
                 response.body.string()
             }
         }
@@ -81,12 +73,11 @@ class OkHttpEdupageApi(
     companion object {
         val DEFAULT_BASE_URL = "https://elektryk.edupage.org/".toHttpUrl()
 
-        /** Dla niezalogowanych zawsze "00000000"; bez niego serwer zwraca {"reload":true}. */
+        /** Always "00000000" for guests; without it the server replies {"reload":true}. */
         const val GUEST_GSH = "00000000"
 
         private val JSON = "application/json; charset=UTF-8".toMediaType()
     }
 }
 
-/** Błąd po stronie EduPage (zła odpowiedź, błąd HTTP, zmieniony format). */
 class EdupageException(message: String, cause: Throwable? = null) : IOException(message, cause)
