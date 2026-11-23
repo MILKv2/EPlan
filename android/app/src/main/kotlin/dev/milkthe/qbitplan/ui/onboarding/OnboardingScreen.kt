@@ -6,7 +6,21 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.IntOffset
+import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,33 +88,61 @@ import dev.milkthe.qbitplan.ui.common.surface
 import dev.milkthe.qbitplan.ui.search.GridTile
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 
+/** Visual order of the steps; drives the slide direction. */
+private val OnboardingStep.order: Int
+    get() = when (this) {
+        OnboardingStep.ROLE -> 0
+        OnboardingStep.CLASS, OnboardingStep.TEACHER -> 1
+        OnboardingStep.GROUPS -> 2
+        OnboardingStep.NOTIFICATIONS -> 3
+    }
+
 @Composable
 fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val sel = state.selection
+    val context = LocalContext.current
+    // Checked on each composition so a permission granted in system settings is picked up.
+    val notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    val next = { vm.next(notificationsAllowed) }
     BackHandler(enabled = sel.step != OnboardingStep.ROLE) { vm.back() }
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-        ProgressBar(sel.step, showBack = sel.step != OnboardingStep.ROLE, onBack = { vm.back() })
-        when {
-            sel.step == OnboardingStep.ROLE -> RoleStep(sel.mode, vm::chooseMode, vm::next)
-            !state.hasTimetable && !state.failed -> LoadingBox()
-            !state.hasTimetable -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                StateMessage(Icons.Outlined.CloudOff, QbitTheme.colors.danger, stringResource(R.string.error_title), stringResource(R.string.error_text)) {
-                    QbitButton(stringResource(R.string.retry), vm::retry)
+        ProgressBar(sel.step, total = if (notificationsAllowed) 2 else 3, showBack = sel.step != OnboardingStep.ROLE, onBack = { vm.back() })
+        AnimatedContent(
+            targetState = sel.step,
+            transitionSpec = {
+                val forward = targetState.order > initialState.order
+                val spec = tween<IntOffset>(280, easing = FastOutSlowInEasing)
+                (slideInHorizontally(spec) { w -> if (forward) w / 3 else -w / 3 } + fadeIn(tween(200, delayMillis = 60)))
+                    .togetherWith(slideOutHorizontally(spec) { w -> if (forward) -w / 3 else w / 3 } + fadeOut(tween(120)))
+            },
+            label = "onboardingStep",
+            modifier = Modifier.weight(1f),
+        ) { step ->
+            Column(Modifier.fillMaxSize()) {
+                when {
+                    step == OnboardingStep.ROLE -> RoleStep(sel.mode, vm::chooseMode, next)
+                    !state.hasTimetable && !state.failed -> LoadingBox()
+                    !state.hasTimetable -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        StateMessage(Icons.Outlined.CloudOff, QbitTheme.colors.danger, stringResource(R.string.error_title), stringResource(R.string.error_text)) {
+                            QbitButton(stringResource(R.string.retry), vm::retry)
+                        }
+                    }
+                    step == OnboardingStep.CLASS -> ClassStep(state, vm, next)
+                    step == OnboardingStep.GROUPS -> GroupsStep(state, vm, next)
+                    step == OnboardingStep.TEACHER -> TeacherStep(state, vm, next)
+                    step == OnboardingStep.NOTIFICATIONS -> NotificationsStep(state, vm)
                 }
             }
-            sel.step == OnboardingStep.CLASS -> ClassStep(state, vm)
-            sel.step == OnboardingStep.GROUPS -> GroupsStep(state, vm)
-            sel.step == OnboardingStep.TEACHER -> TeacherStep(state, vm)
-            sel.step == OnboardingStep.NOTIFICATIONS -> NotificationsStep(state, vm)
         }
     }
 }
 
 @Composable
-private fun ProgressBar(step: OnboardingStep, showBack: Boolean, onBack: () -> Unit) {
+private fun ProgressBar(step: OnboardingStep, total: Int, showBack: Boolean, onBack: () -> Unit) {
     val colors = QbitTheme.colors
+    val current = minOf(step.number, total)
     Row(
         Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -108,11 +150,12 @@ private fun ProgressBar(step: OnboardingStep, showBack: Boolean, onBack: () -> U
     ) {
         if (showBack) RoundIconButton(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back), onBack) else Spacer(Modifier.size(48.dp))
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            (1..3).forEach { i ->
-                Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(if (i <= step.number) colors.accent.solid else colors.default))
+            (1..total).forEach { i ->
+                val fill by animateColorAsState(if (i <= current) colors.accent.solid else colors.default, label = "progress")
+                Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(fill))
             }
         }
-        Text(stringResource(R.string.onboarding_step, step.number), fontSize = 13.sp, color = colors.muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(40.dp))
+        Text(stringResource(R.string.onboarding_step, current, total), fontSize = 13.sp, color = colors.muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(40.dp))
     }
 }
 
@@ -176,7 +219,7 @@ private fun RoleCard(icon: ImageVector, title: String, description: String, sele
 }
 
 @Composable
-private fun ColumnScope.ClassStep(state: OnboardingState, vm: OnboardingViewModel) {
+private fun ColumnScope.ClassStep(state: OnboardingState, vm: OnboardingViewModel, onNext: () -> Unit) {
     Heading(stringResource(R.string.onboarding_class_title), stringResource(R.string.onboarding_class_text, state.classCount))
     SearchField(state.selection.classQuery, vm::setClassQuery, stringResource(R.string.onboarding_class_search), Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp))
     LazyVerticalGrid(
@@ -193,7 +236,7 @@ private fun ColumnScope.ClassStep(state: OnboardingState, vm: OnboardingViewMode
     Footer {
         QbitButton(
             text = state.className?.let { stringResource(R.string.next_with, it) } ?: stringResource(R.string.next),
-            onClick = vm::next,
+            onClick = onNext,
             enabled = state.selection.classId != null,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -201,7 +244,7 @@ private fun ColumnScope.ClassStep(state: OnboardingState, vm: OnboardingViewMode
 }
 
 @Composable
-private fun ColumnScope.GroupsStep(state: OnboardingState, vm: OnboardingViewModel) {
+private fun ColumnScope.GroupsStep(state: OnboardingState, vm: OnboardingViewModel, onNext: () -> Unit) {
     Heading(stringResource(R.string.onboarding_groups_title), stringResource(R.string.onboarding_groups_text))
     Column(
         Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
@@ -221,11 +264,11 @@ private fun ColumnScope.GroupsStep(state: OnboardingState, vm: OnboardingViewMod
             }
         }
     }
-    Footer { QbitButton(stringResource(R.string.next), vm::next, Modifier.fillMaxWidth()) }
+    Footer { QbitButton(stringResource(R.string.next), onNext, Modifier.fillMaxWidth()) }
 }
 
 @Composable
-private fun ColumnScope.TeacherStep(state: OnboardingState, vm: OnboardingViewModel) {
+private fun ColumnScope.TeacherStep(state: OnboardingState, vm: OnboardingViewModel, onNext: () -> Unit) {
     val colors = QbitTheme.colors
     val sel = state.selection
     Heading(stringResource(R.string.onboarding_teacher_title), stringResource(R.string.onboarding_teacher_text))
@@ -254,23 +297,27 @@ private fun ColumnScope.TeacherStep(state: OnboardingState, vm: OnboardingViewMo
                     NameOption(stringResource(R.string.onboarding_name_manual), stringResource(R.string.onboarding_name_manual_desc), sel.pickedName == null) { vm.pickName(null) }
                 }
             }
-            if (sel.pickedName == null) {
-                item(span = { GridItemSpan(maxLineSpan) }, key = "typed") {
-                    Box(
-                        Modifier.fillMaxWidth().height(48.dp).surface(RoundedCornerShape(QbitTheme.radius.field)).padding(horizontal = 14.dp),
-                        contentAlignment = Alignment.CenterStart,
-                    ) {
-                        if (sel.typedName.isEmpty()) Text(stringResource(R.string.onboarding_name_hint), style = MaterialTheme.typography.bodyLarge, color = colors.muted)
-                        QbitTextField(value = sel.typedName, onValueChange = vm::setTypedName, modifier = Modifier.fillMaxWidth())
-                    }
-                }
-            }
         }
     }
     Footer {
+        // Kept above the button rather than in the grid so the keyboard never covers it.
+        if (sel.teacherId != null && sel.pickedName == null) {
+            Box(
+                Modifier.fillMaxWidth().padding(bottom = 6.dp).height(48.dp).surface(RoundedCornerShape(QbitTheme.radius.field)).padding(horizontal = 14.dp),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (sel.typedName.isEmpty()) Text(stringResource(R.string.onboarding_name_hint), style = MaterialTheme.typography.bodyLarge, color = colors.muted)
+                QbitTextField(
+                    value = sel.typedName,
+                    onValueChange = vm::setTypedName,
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
         QbitButton(
             text = state.teacherShort?.let { stringResource(R.string.next_with, it) } ?: stringResource(R.string.next),
-            onClick = vm::next,
+            onClick = onNext,
             enabled = sel.teacherId != null && sel.fullName.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         )
