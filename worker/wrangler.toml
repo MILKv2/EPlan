@@ -2,6 +2,11 @@ name = "qbitplan"
 main = "src/index.js"
 compatibility_date = "2026-11-01"
 
+# Runs only on the cron; it serves no HTTP, so no public workers.dev or preview URLs
+# (set here, since every deploy would turn them back on).
+workers_dev = false
+preview_urls = false
+
 # Substitutions are checked every 5 minutes (UTC cron; the worker uses Polish dates itself).
 [triggers]
 crons = ["*/5 * * * *"]
