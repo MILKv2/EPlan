@@ -11,6 +11,7 @@ import dev.milkthe.qbitplan.core.schedule.isSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nextSchoolDay
 import dev.milkthe.qbitplan.data.SchoolRepository
+import dev.milkthe.qbitplan.data.StartDay
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.SyncState
 import dev.milkthe.qbitplan.data.prefs.UserMode
@@ -28,9 +29,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
@@ -77,6 +80,7 @@ class SubstitutionsViewModel @Inject constructor(
     private val repository: SchoolRepository,
     preferences: UserPreferencesRepository,
     private val sync: SyncManager,
+    startDay: StartDay,
     clock: Clock,
 ) : ViewModel() {
 
@@ -85,8 +89,9 @@ class SubstitutionsViewModel @Inject constructor(
     /** The two quick days: today (or the next school day on a weekend) and the school day after it. */
     val quickDays: List<LocalDate> = nearestSchoolDay(today).let { listOf(it, nextSchoolDay(it)) }
 
-    private val selected = MutableStateFlow(quickDays.first())
-    val selectedDate: StateFlow<LocalDate> = selected.asStateFlow()
+    /** `null` until the start day is known: after the profile's last lesson the tab opens on the next school day. */
+    private val selected = MutableStateFlow<LocalDate?>(null)
+    val selectedDate: StateFlow<LocalDate?> = selected.asStateFlow()
 
     private val query = MutableStateFlow("")
     val queryText: StateFlow<String> = query.asStateFlow()
@@ -95,7 +100,7 @@ class SubstitutionsViewModel @Inject constructor(
     val lastRefresh: StateFlow<Instant?> = repository.lastRefresh.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val state: StateFlow<SubstitutionsState> = combine(
-        selected.flatMapLatest { repository.substitutions(it) },
+        selected.filterNotNull().flatMapLatest { repository.substitutions(it) },
         repository.timetable,
         preferences.preferences,
         query,
@@ -133,6 +138,10 @@ class SubstitutionsViewModel @Inject constructor(
 
     init {
         quickDays.forEach(sync::ensureSubstitutions)
+        viewModelScope.launch {
+            val start = startDay()
+            selected.compareAndSet(null, start)
+        }
     }
 
     fun select(date: LocalDate) {
@@ -142,7 +151,9 @@ class SubstitutionsViewModel @Inject constructor(
 
     fun setQuery(value: String) { query.value = value }
 
-    fun refresh() = sync.refreshSubstitutions(selected.value)
+    fun refresh() {
+        selected.value?.let(sync::refreshSubstitutions)
+    }
 
     /** School days of [month] that have substitutions in the cache (no network). */
     fun daysWithChanges(month: YearMonth): Flow<Set<LocalDate>> {

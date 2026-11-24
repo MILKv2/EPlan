@@ -97,7 +97,8 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val selected by vm.selectedDate.collectAsStateWithLifecycle()
+    // Null for the moment it takes to work out whether the tab opens on today or the next school day.
+    val selected = vm.selectedDate.collectAsStateWithLifecycle().value
     val query by vm.queryText.collectAsStateWithLifecycle()
     val sync by vm.syncState.collectAsStateWithLifecycle()
     val lastRefresh by vm.lastRefresh.collectAsStateWithLifecycle()
@@ -109,11 +110,11 @@ fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SegmentedControl(
                     options = vm.quickDays.map { quickLabel(it, vm.today) },
-                    selected = vm.quickDays.indexOf(selected),
+                    selected = selected?.let(vm.quickDays::indexOf) ?: -1,
                     onSelect = { vm.select(vm.quickDays[it]) },
                     modifier = Modifier.weight(1f),
                 )
-                val custom = selected !in vm.quickDays
+                val custom = selected != null && selected !in vm.quickDays
                 Row(
                     Modifier
                         .height(48.dp)
@@ -125,11 +126,11 @@ fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Icon(Icons.Outlined.CalendarMonth, contentDescription = stringResource(R.string.calendar_open), tint = if (custom) colors.onAccent else colors.foreground, modifier = Modifier.size(22.dp))
-                    if (custom) Text("${selected.dayOfWeekText().lowercase(PolishLocale)} ${selected.dayOfMonth}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.onAccent)
+                    if (custom && selected != null) Text("${selected.dayOfWeekText().lowercase(PolishLocale)} ${selected.dayOfMonth}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = colors.onAccent)
                 }
             }
             Row(Modifier.fillMaxWidth().height(30.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(selected.titleText(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
+                if (selected != null) Text(selected.titleText(), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.weight(1f))
                 SyncLine(sync, lastRefresh, vm::refresh)
             }
@@ -152,7 +153,7 @@ fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
     }
 
     if (calendarOpen) {
-        CalendarSheet(vm, selected, onDismiss = { calendarOpen = false })
+        CalendarSheet(vm, selected ?: vm.quickDays.first(), onDismiss = { calendarOpen = false })
     }
 }
 

@@ -8,10 +8,10 @@ import dev.milkthe.qbitplan.core.schedule.DayPlanner
 import dev.milkthe.qbitplan.core.schedule.LessonStatus
 import dev.milkthe.qbitplan.core.schedule.isSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
-import dev.milkthe.qbitplan.core.schedule.planStartDay
 import dev.milkthe.qbitplan.core.schedule.schoolWeekOf
 import dev.milkthe.qbitplan.data.Profile
 import dev.milkthe.qbitplan.data.SchoolRepository
+import dev.milkthe.qbitplan.data.StartDay
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.SyncState
 import dev.milkthe.qbitplan.data.prefs.UserMode
@@ -29,7 +29,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -74,7 +73,8 @@ class PlanViewModel @Inject constructor(
     private val repository: SchoolRepository,
     private val preferences: UserPreferencesRepository,
     private val sync: SyncManager,
-    private val clock: Clock,
+    private val startDay: StartDay,
+    clock: Clock,
 ) : ViewModel() {
 
     val today: LocalDate = LocalDate.now(clock)
@@ -102,7 +102,7 @@ class PlanViewModel @Inject constructor(
 
     /** `null` until today's lessons are known: once the last one is over, the plan opens on the next school day. */
     val week: StateFlow<PlanWeek?> = flow {
-        val start = planStartDay(today, LocalTime.now(clock), lastLessonEnd(today))
+        val start = startDay()
         val dates = schoolWeekOf(start)
         dates.forEach(sync::ensureSubstitutions)
         emit(PlanWeek(dates, dates.indexOf(start), dates.map { DayChip(it, it.dayOfWeekText(), it.dayOfMonth.toString(), it == today, false) }))
@@ -145,13 +145,6 @@ class PlanViewModel @Inject constructor(
                 periodStarts = timetable.periods.associate { it.number to it.start },
             )
         }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayPlanState.Loading)
-
-    /** A day of only cancelled lessons still ends after the last of them. */
-    private suspend fun lastLessonEnd(date: LocalDate): LocalTime? {
-        if (!date.isSchoolDay()) return null
-        val lessons = (day(date).first { it != DayPlanState.Loading } as? DayPlanState.Ready)?.lessons ?: return null
-        return lessons.filter { it.status.takesPlace }.ifEmpty { lessons }.mapNotNull { it.end }.maxOrNull()
-    }
 
     fun toggleWeek() {
         weekendState.value = false
