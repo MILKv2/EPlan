@@ -13,6 +13,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dagger.hilt.android.AndroidEntryPoint
+import dev.milkthe.qbitplan.crash.CrashHandler
 import dev.milkthe.qbitplan.data.prefs.ThemeMode
 import dev.milkthe.qbitplan.ui.navigation.MainNavigation
 import dev.milkthe.qbitplan.ui.onboarding.OnboardingScreen
@@ -26,6 +27,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Here rather than in QbitApp, so tests that don't start MainActivity keep the default handler.
+        CrashHandler.install(application)
         enableEdgeToEdge()
         setContent {
             val state by viewModel.state.collectAsStateWithLifecycle()

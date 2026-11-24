@@ -211,4 +211,26 @@
     <string name="onboarding_notif_sample_teacher_text">Za nieobecnego nauczyciela · sala A53</string>
     <string name="onboarding_notif_enable">Włącz powiadomienia</string>
     <string name="onboarding_notif_later">Później</string>
+
+    <!-- Crash screen -->
+    <string name="crash_title">Coś poszło nie tak</string>
+    <string name="crash_text">QbitPlan nieoczekiwanie się zamknął. Twój profil i zapisany plan są bezpieczne. Jeśli to się powtarza, skopiuj szczegóły błędu i wyślij je autorowi.</string>
+    <string name="crash_restart">Uruchom ponownie</string>
+    <string name="crash_copy">Kopiuj szczegóły błędu</string>
+    <string name="crash_copied">Skopiowano</string>
+
+    <!-- Push notifications -->
+    <string name="push_channel">Zmiany w planie</string>
+    <string name="push_channel_desc">Zastępstwa, odwołane lekcje i zmiany sal w Twoim planie</string>
+    <string name="push_title">Zmiany w planie · %1$s</string>
+    <string name="push_unknown">Zastępstwa się zmieniły. Otwórz plan, żeby zobaczyć szczegóły.</string>
+    <string name="push_more">i jeszcze %1$d</string>
+    <string name="push_line">%1$s. %2$s: %3$s</string>
+    <string name="push_instead">zamiast %1$s</string>
+    <string name="push_room">sala %1$s</string>
+    <string name="push_moved">przeniesiona %1$s</string>
+    <string name="push_covering">zastępstwo %1$s</string>
+    <string name="push_changed">zmiana</string>
+    <string name="push_teacher">uczy %1$s</string>
+    <string name="push_back_to_plan">znów zgodnie z planem</string>
 </resources>

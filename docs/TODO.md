@@ -28,10 +28,12 @@ Living list of what's left before the stable release. Remove this file during th
 - [ ] Final app icon (owner provides)
 - [ ] Maybe rename the project (app name, package id, repo) – do it before the first stable release
 - [ ] APK file name for releases (e.g. `QbitPlan-<version>.apk`)
-- [ ] Worker (`worker/`, TypeScript): cron every 5 min, today + tomorrow substitutions, per class/teacher hash in KV (write on change, TTL 3 days)
-- [ ] FCM pushes to topics `klasa-<nazwa>` / `naucz-<imie-nazwisko>`; service-account key only in `wrangler secret`
-  - needs: `google-services.json`, KV namespace ID
-- [ ] App: subscribe to the profile's topic, respect notification toggle and weekend quiet mode
+- [x] Worker (`worker/`, JS + JSDoc): cron every 5 min, today + next 2 school days, per class/teacher hash in KV (write on change, TTL 3 days)
+- [x] FCM pushes (date only) to topics `klasa-<nazwa>` / `naucz-<imie-nazwisko>`; the app fetches the day and diffs its own plan
+- [x] App: subscribe to the profile's topic, respect notification toggle and weekend quiet mode
+- [ ] Worker setup in Cloudflare: KV namespace ID into `wrangler.toml`, Git import (root `worker`), secret `FCM_SERVICE_ACCOUNT`
+- [ ] Live test of pushes on the phone (debug build is a separate Firebase app `dev.milkthe.qbitplan.debug`)
+- [x] Crash screen ("Coś poszło nie tak") instead of the system dialog
 - [ ] Release signing (keystore + `keystore.properties`, outside git) and GitHub Releases workflow
 - [ ] GitHub Actions `startup_failure` (account-level, owner checks on desktop)
 
