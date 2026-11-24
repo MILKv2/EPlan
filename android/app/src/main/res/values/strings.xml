@@ -171,6 +171,10 @@
     <string name="about_license_value">GPL-3.0</string>
     <string name="about_oss_licenses">Licencje open source</string>
     <string name="about_oss_desc">Biblioteki użyte w aplikacji</string>
+    <string name="contact_discord" translatable="false">milkv2</string>
+    <string name="about_report">Zgłoś błąd albo pomysł</string>
+    <string name="about_report_value">Discord: %1$s · dotknij, aby skopiować nick</string>
+    <string name="about_report_copied">Skopiowano nick</string>
     <string name="about_updates">Aktualizacje</string>
     <string name="about_update_never">Dotknij, aby sprawdzić</string>
     <string name="about_update_checking">Sprawdzam…</string>
@@ -224,7 +228,7 @@
 
     <!-- Crash screen -->
     <string name="crash_title">Coś poszło nie tak</string>
-    <string name="crash_text">E-Plan nieoczekiwanie się zamknął. Twój profil i zapisany plan są bezpieczne. Jeśli to się powtarza, skopiuj szczegóły błędu i wyślij je autorowi.</string>
+    <string name="crash_text">E-Plan nieoczekiwanie się zamknął. Twój profil i zapisany plan są bezpieczne. Jeśli to się powtarza, skopiuj szczegóły błędu i wyślij je na Discordzie do %1$s.</string>
     <string name="crash_restart">Uruchom ponownie</string>
     <string name="crash_copy">Kopiuj szczegóły błędu</string>
     <string name="crash_copied">Skopiowano</string>

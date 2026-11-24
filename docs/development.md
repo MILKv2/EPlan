@@ -10,8 +10,7 @@ worker/             Cloudflare Worker: co 5 min sprawdza zastępstwa, push FCM, 
 docs/               edupage-api.md: opis endpointów EduPage; screenshots/: zrzuty do README
 fixtures/           zapisane odpowiedzi EduPage do testów (apka + worker)
 .github/workflows/  android.yml: nowa wersja w android/version.properties na main → APK → GitHub Release
-                    tests.yml: testy apki
-                    worker.yml: zmiany w worker/** → wrangler deploy
+                    tests.yml: testy apki i workera (worker wdraża Cloudflare z main, zob. worker/README.md)
 ```
 
 Apka pobiera dane bezpośrednio z EduPage, bez własnego backendu. Worker tylko wysyła
