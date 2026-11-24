@@ -60,5 +60,5 @@ szczegółów błędu, wklej je do zgłoszenia.
 
 ---
 
-Licencja [GPL-3.0](LICENSE). Autor: Jan ([milkthe.dev](https://milkthe.dev)).
+Licencja [GPL-3.0](LICENSE). Autor: MILK ([milkthe.dev](https://milkthe.dev)).
 Informacje techniczne: [`docs/development.md`](docs/development.md).
