@@ -16,6 +16,7 @@ import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
 import dev.milkthe.qbitplan.data.SchoolRepository
+import dev.milkthe.qbitplan.data.StartDay
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.prefs.ThemeMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
@@ -106,7 +107,7 @@ class ScreensTest {
     @Test
     fun planStudentLight() {
         student()
-        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_light")
     }
@@ -114,7 +115,7 @@ class ScreensTest {
     @Test
     fun planStudentDark() {
         student()
-        show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_dark")
     }
@@ -122,7 +123,7 @@ class ScreensTest {
     @Test
     fun lessonSheet() {
         student()
-        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
         waitForText("Informatyka")
         compose.onAllNodesWithText("Informatyka", substring = true).onFirst().performClick()
         waitForText("Sala")
@@ -132,7 +133,7 @@ class ScreensTest {
     @Test
     fun planWeek() {
         student()
-        val vm = PlanViewModel(repo, prefs, sync, clock).apply { toggleWeek() }
+        val vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock).apply { toggleWeek() }
         show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = vm) }
         waitForText("Pt")
         capture("plan_week")
@@ -141,7 +142,7 @@ class ScreensTest {
     @Test
     fun planTeacher() {
         teacher()
-        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
         waitForText("1at")
         capture("plan_teacher")
     }
@@ -149,7 +150,7 @@ class ScreensTest {
     @Test
     fun substitutions() {
         student()
-        val vm = SubstitutionsViewModel(repo, prefs, sync, clock)
+        val vm = SubstitutionsViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)
         // Robolectric sometimes misses the first emission from a background flow across tests;
         // start from the loaded state so the render check is deterministic.
         runBlocking { vm.state.first { !it.loading } }
