@@ -11,13 +11,18 @@ import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.milkthe.qbitplan.core.update.AppVersion
+import dev.milkthe.qbitplan.core.update.ReleaseResponse
 import dev.milkthe.qbitplan.crash.CrashScreen
 import dev.milkthe.qbitplan.data.FakeEdupageApi
+import dev.milkthe.qbitplan.data.FakeReleaseApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
 import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.StartDay
 import dev.milkthe.qbitplan.data.SyncManager
+import dev.milkthe.qbitplan.data.UpdateRepository
+import dev.milkthe.qbitplan.data.fixture
 import dev.milkthe.qbitplan.data.prefs.ThemeMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.ui.common.LocalClock
@@ -73,6 +78,8 @@ class ScreensTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val repo = SchoolRepository(FakeEdupageApi(), InMemoryResponseCache(), clock, scope)
     private val sync = SyncManager(repo, clock, scope)
+    private val releases = FakeReleaseApi()
+    private val updates = UpdateRepository(releases, InMemoryResponseCache(), AppVersion(1, 0, 1), clock, scope)
     private lateinit var prefs: UserPreferencesRepository
 
     @Before
@@ -185,9 +192,19 @@ class ScreensTest {
     @Test
     fun settings() {
         student()
-        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync)) }
+        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
         waitForText("Ostatnia synchronizacja")
         capture("settings")
+    }
+
+    @Test
+    fun settingsWithUpdate() {
+        student()
+        releases.next = { ReleaseResponse.Fresh(fixture("github/latest_release.json"), etag = null) }
+        runBlocking { updates.check() }
+        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
+        waitForText("Nowa wersja 1.0.2")
+        capture("settings_update")
     }
 
     @Test

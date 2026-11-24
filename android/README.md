@@ -1,6 +1,6 @@
 # android/
 
-Aplikacja QbitPlan (`dev.milkthe.qbitplan`): Kotlin, Jetpack Compose,
+Aplikacja E-Plan (`dev.milkthe.qbitplan`): Kotlin, Jetpack Compose,
 Material 3, Hilt, Room, DataStore, OkHttp, kotlinx.serialization, Jsoup.
 minSdk 26, compileSdk 37.2, AGP 9 (Kotlin wbudowany), Gradle 9.
 

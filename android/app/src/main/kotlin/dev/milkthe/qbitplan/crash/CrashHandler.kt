@@ -45,7 +45,7 @@ object CrashHandler {
     }
 
     private fun details(error: Throwable): String =
-        "QbitPlan ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · " +
+        "E-Plan ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · " +
             "${Build.MANUFACTURER} ${Build.MODEL}\n\n" + error.stackTraceToString().take(MAX_DETAILS)
 
     // Keeps the Intent far below the Binder transaction limit.

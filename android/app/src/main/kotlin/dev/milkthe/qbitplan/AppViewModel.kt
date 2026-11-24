@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.milkthe.qbitplan.data.SyncManager
+import dev.milkthe.qbitplan.data.UpdateRepository
 import dev.milkthe.qbitplan.data.prefs.ThemeMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +19,7 @@ data class AppState(val theme: ThemeMode, val onboarded: Boolean)
 class AppViewModel @Inject constructor(
     preferences: UserPreferencesRepository,
     private val sync: SyncManager,
+    private val updates: UpdateRepository,
 ) : ViewModel() {
 
     /** `null` until preferences are read, so the first frame doesn't flash onboarding. */
@@ -25,5 +27,8 @@ class AppViewModel @Inject constructor(
         .map { AppState(it.theme, it.isOnboarded) }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
-    fun onStart() = sync.refreshIfStale()
+    fun onStart() {
+        sync.refreshIfStale()
+        updates.checkIfDue()
+    }
 }

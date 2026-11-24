@@ -116,6 +116,7 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
     val entry by nav.currentBackStackEntryAsState()
     val destination = entry?.destination
     val badge by badgeVm.todayChanges.collectAsStateWithLifecycle()
+    val updateAvailable by badgeVm.updateAvailable.collectAsStateWithLifecycle()
 
     Scaffold(
         containerColor = QbitTheme.colors.background,
@@ -136,6 +137,7 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
                                 item = item,
                                 selected = selected,
                                 badge = if (item.route == SubstitutionsRoute && badge > 0) badge else null,
+                                dot = item.route == SettingsRoute && updateAvailable,
                                 onClick = { nav.openTab(item.route) },
                                 modifier = Modifier.weight(1f),
                             )
@@ -205,7 +207,7 @@ private fun popOut(): ExitTransition = slideOutHorizontally(SlideSpec) { w -> w 
 private fun poppedBack(): EnterTransition = slideInHorizontally(SlideSpec) { w -> -w / 4 }
 
 @Composable
-private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, onClick: () -> Unit, modifier: Modifier) {
+private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, dot: Boolean, onClick: () -> Unit, modifier: Modifier) {
     val colors = QbitTheme.colors
     val pill by animateFloatAsState(if (selected) 1f else 0f, label = "navPill")
     Column(
@@ -239,6 +241,16 @@ private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, onClick: () 
                         .clip(CircleShape)
                         .background(colors.warning.solid)
                         .padding(horizontal = 5.dp),
+                )
+            }
+            if (dot) {
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = (-14).dp, y = 2.dp)
+                        .size(9.dp)
+                        .clip(CircleShape)
+                        .background(colors.accent.solid),
                 )
             }
         }
