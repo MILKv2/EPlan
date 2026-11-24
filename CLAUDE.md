@@ -23,3 +23,4 @@ The owner does not write Kotlin; keep the code clean enough to be maintained by 
 - Stages are summarised to the owner; wait for "ok" before the next stage unless told otherwise.
 - The owner allows merging PRs once tests pass (CI `Tests` on the PR, or locally). Prefer squash merges.
 - Secrets never go to git (keystores, `keystore.properties`, `.dev.vars`, service-account keys).
+- The repo is public. Commits, PRs, issues and docs say only what a contributor needs, briefly: no personal details (owner, friends, testers, devices, accounts), no school identity beyond the EduPage host, no narrative.
