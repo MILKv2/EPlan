@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import { clearTokenCache } from '../src/fcm.js';
-import { run } from '../src/index.js';
+import { run, stateExpiration } from '../src/index.js';
 import { substitutionsHtml, testAccount } from './helpers.js';
 
 const NOW = new Date('2026-11-24T08:00:00Z'); // watches 11-24, 11-25, 11-26
@@ -10,16 +10,18 @@ const quiet = { log() {}, error() {} };
 
 class MemoryKV {
   /** @type {Map<string, string>} */ values = new Map();
+  /** @type {Map<string, number | undefined>} */ expirations = new Map();
   puts = 0;
   /** @param {string} key */
   async get(key) {
     const value = this.values.get(key);
     return value === undefined ? null : JSON.parse(value);
   }
-  /** @param {string} key @param {string} value */
-  async put(key, value) {
+  /** @param {string} key @param {string} value @param {{ expiration?: number }} [options] */
+  async put(key, value, options) {
     this.puts++;
     this.values.set(key, value);
+    this.expirations.set(key, options?.expiration);
   }
 }
 
@@ -54,6 +56,14 @@ test('the first sighting of a day is stored without notifying', async () => {
   await run(env, { now: NOW, fetchImpl: net.fetchImpl, log: quiet });
   assert.equal(net.sends.length, 0);
   assert.deepEqual([...env.STATE.values.keys()].sort(), ['subst:2026-11-24', 'subst:2026-11-25', 'subst:2026-11-26']);
+  assert.equal(env.STATE.expirations.get('subst:2026-11-24'), Date.parse('2026-11-26T00:00:00Z') / 1000);
+});
+
+test('a day is kept while watched and dropped a day after it ends', () => {
+  // Friday 2026-11-27 watches Fri, Mon and Tue; Tuesday's key must outlive Tuesday in Warsaw.
+  const tuesdayEndsInWarsaw = Date.parse('2026-12-01T23:00:00Z') / 1000;
+  assert.ok(stateExpiration('2026-12-01') > tuesdayEndsInWarsaw);
+  assert.ok(stateExpiration('2026-12-01') - tuesdayEndsInWarsaw <= 24 * 60 * 60 + 3600);
 });
 
 test('nothing changed: no pushes, no writes', async () => {

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">QbitPlan</string>
+    <string name="app_name">E-Plan</string>
 
     <!-- Common -->
     <string name="back">Wstecz</string>
@@ -204,7 +204,7 @@
     <string name="onboarding_name_hint">Imię i nazwisko</string>
     <string name="onboarding_notif_title">Nie przegap zmian</string>
     <string name="onboarding_notif_text">Powiadomimy Cię o zastępstwie, odwołanej lekcji albo zmianie sali.</string>
-    <string name="onboarding_notif_app">QbitPlan · teraz</string>
+    <string name="onboarding_notif_app">E-Plan · teraz</string>
     <string name="onboarding_notif_sample_title">%1$s: lekcja 6 odwołana</string>
     <string name="onboarding_notif_sample_text">Poniedziałek · 12:15–13:00</string>
     <string name="onboarding_notif_sample_teacher_title">Zastępstwo: lekcja 1</string>
@@ -214,7 +214,7 @@
 
     <!-- Crash screen -->
     <string name="crash_title">Coś poszło nie tak</string>
-    <string name="crash_text">QbitPlan nieoczekiwanie się zamknął. Twój profil i zapisany plan są bezpieczne. Jeśli to się powtarza, skopiuj szczegóły błędu i wyślij je autorowi.</string>
+    <string name="crash_text">E-Plan nieoczekiwanie się zamknął. Twój profil i zapisany plan są bezpieczne. Jeśli to się powtarza, skopiuj szczegóły błędu i wyślij je autorowi.</string>
     <string name="crash_restart">Uruchom ponownie</string>
     <string name="crash_copy">Kopiuj szczegóły błędu</string>
     <string name="crash_copied">Skopiowano</string>

@@ -15,7 +15,7 @@ pobrane 2026-11-23. Korzystają z nich testy apki (`android/`) i workera
 | `substitutions/2026-11-21.json` | 〃 | sobota: „W tym dniu nie ma żadnych zastępstw.” |
 | `substitutions/2026-10-15.json` | 〃 | „Klasy nieobecne”, `Cały dzień`, `Nieobecność` (starsza wersja planu) |
 | `substitutions/2026-09-10.json` | 〃 | zakresy lekcji `3 - 4`, `(0 - 4)` w nagłówku (starsza wersja planu) |
-| `currenttt/<klasa>_2026-11-23_27.json` | `curentttGetData` (plan bieżący, tydzień; 1at 1ct 1dt 1fl 2at 2ct 3abt 4fl) | **wyrocznia** do testów nakładania zastępstw (etap 3); apka z tego endpointu nie korzysta |
+| `currenttt/<klasa>_2026-11-23_27.json` | `curentttGetData` (plan bieżący, tydzień; 1at 1ct 1dt 1fl 2at 2ct 3abt 4fl) | **wyrocznia** do testów nakładania zastępstw; apka z tego endpointu nie korzysta |
 
 Zastępstwa z 2026-11-23…25 pasują do planu 189, więc nadają się do testów
 nakładania. Aby odświeżyć fixtures, użyj tych samych zapytań co w `docs/`.
