@@ -37,5 +37,5 @@ private fun divisionLabel(options: List<String>): Int? {
     }
 }
 
-/** Joined classes split by profession, e.g. "D-automatyk" / "F-informatyk". */
-private val ProfessionGroup = Regex("^[A-Z]-\\p{L}")
+/** Joined classes split by profession, e.g. "D-automatyk" / "F-informatyk", or just "grB" / "grF". */
+private val ProfessionGroup = Regex("^([A-Z]-\\p{L}|gr[A-Z]$)")

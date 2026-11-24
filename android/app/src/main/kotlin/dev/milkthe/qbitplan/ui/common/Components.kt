@@ -256,7 +256,8 @@ fun SyncLine(sync: SyncState, lastRefresh: Instant?, onRefresh: () -> Unit, modi
     Row(
         modifier = modifier
             .height(26.dp)
-            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.refresh), onClick = onRefresh)
+            // No ripple: the spinner is the feedback, and a box around a caption looks like a glitch.
+            .clickable(interactionSource = null, indication = null, role = Role.Button, onClickLabel = stringResource(R.string.refresh), onClick = onRefresh)
             .padding(horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),

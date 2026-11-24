@@ -34,7 +34,19 @@ data class SchoolClass(val id: String, val name: String, val short: String, val 
 
 data class Classroom(val id: String, val name: String, val short: String)
 
-data class Subject(val id: String, val name: String, val short: String)
+data class Subject(val id: String, val name: String, val short: String) {
+    /**
+     * Long vocational names don't fit a lesson tile and everyone uses their acronym
+     * ("PiKUA" for "Przeglądy i konserwacja układów automatyki"). Shorts that aren't
+     * acronyms ("Inst_aut_p", "matur_ang") would read worse than a cut name.
+     */
+    val displayName: String
+        get() = if (name.length > LONG_NAME && short.all { it.isLetter() } && short.count { it.isUpperCase() } >= 2) short else name
+
+    private companion object {
+        const val LONG_NAME = 30
+    }
+}
 
 /** Groups sharing a [division] are mutually exclusive (e.g. "1. Grupa" / "2. Grupa"). */
 data class Group(

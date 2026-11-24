@@ -1,7 +1,6 @@
 package dev.milkthe.qbitplan.data.prefs
 
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -46,8 +45,6 @@ class UserPreferencesRepository @Inject constructor(
     suspend fun setQuietWeekends(enabled: Boolean) = dataStore.edit { it[QUIET_WEEKENDS] = enabled }
 
     suspend fun setOnlyMyGroups(enabled: Boolean) = dataStore.edit { it[ONLY_MY_GROUPS] = enabled }
-
-    suspend fun clearMode() = dataStore.edit { prefs: MutablePreferences -> prefs.remove(MODE) }
 
     private fun Preferences.toUserPreferences() = UserPreferences(
         mode = this[MODE]?.let { name -> UserMode.entries.find { it.name == name } },

@@ -1,6 +1,7 @@
 package dev.milkthe.qbitplan.core.schedule
 
 import java.time.LocalDate
+import java.time.LocalTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -31,5 +32,16 @@ class SchoolCalendarTest {
         assertEquals(LocalDate.of(2026, 11, 23), week.first())
         assertEquals(friday, week.last())
         assertEquals(LocalDate.of(2026, 11, 23), schoolWeekOf(LocalDate.of(2026, 11, 29)).first())
+    }
+
+    @Test
+    fun `plan opens on the next school day once the last lesson is over`() {
+        val thursday = friday.minusDays(1)
+        val end = LocalTime.of(14, 25)
+        assertEquals(thursday, planStartDay(thursday, LocalTime.of(14, 24), end))
+        assertEquals(friday, planStartDay(thursday, end, end))
+        assertEquals(monday, planStartDay(friday, LocalTime.of(18, 0), end))
+        assertEquals(friday, planStartDay(friday, LocalTime.of(18, 0), lastLessonEnd = null))
+        assertEquals(monday, planStartDay(saturday, LocalTime.of(9, 0), end))
     }
 }

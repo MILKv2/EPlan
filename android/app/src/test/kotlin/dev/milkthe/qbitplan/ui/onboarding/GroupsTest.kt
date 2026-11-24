@@ -19,4 +19,10 @@ class GroupsTest {
         )
         assertEquals(R.string.division_profession, divisions.first().label)
     }
+
+    @Test
+    fun `every division used in the timetable gets a label`() {
+        val unlabelled = tt.classes.values.flatMap { cls -> divisionsOf(tt, cls.id).filter { it.label == null }.map { "${cls.short}: ${it.options}" } }
+        assertEquals(emptyList<String>(), unlabelled)
+    }
 }

@@ -42,7 +42,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun SettingsScreen(onAbout: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val colors = QbitTheme.colors
     androidx.compose.foundation.layout.Column(
@@ -52,7 +52,7 @@ fun SettingsScreen(onAbout: () -> Unit, vm: SettingsViewModel = hiltViewModel())
         SettingsRow(
             title = stringResource(if (state.profile is Profile.TeacherProfile) R.string.mode_teacher else R.string.mode_student),
             subtitle = profileText(state.profile),
-            onClick = vm::changeProfile,
+            onClick = onEditProfile,
         ) {
             Text(stringResource(R.string.settings_change), style = MaterialTheme.typography.bodyMedium, color = colors.accent.softForeground, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
         }
