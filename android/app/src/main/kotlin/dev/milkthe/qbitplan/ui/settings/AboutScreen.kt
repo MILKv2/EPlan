@@ -48,7 +48,7 @@ import dev.milkthe.qbitplan.ui.common.SettingsRow
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 
 private const val AUTHOR_URL = "https://milkthe.dev"
-private const val REPO_URL = "https://github.com/MILKv2/QbitPlan"
+private const val REPO_URL = "https://github.com/MILKv2/EPlan"
 private const val LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
 
 @Composable

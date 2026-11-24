@@ -47,7 +47,7 @@ class OkHttpReleaseApi(
     }
 
     companion object {
-        val LATEST_RELEASE_URL = "https://api.github.com/repos/MILKv2/QbitPlan/releases/latest".toHttpUrl()
+        val LATEST_RELEASE_URL = "https://api.github.com/repos/MILKv2/EPlan/releases/latest".toHttpUrl()
     }
 }
 

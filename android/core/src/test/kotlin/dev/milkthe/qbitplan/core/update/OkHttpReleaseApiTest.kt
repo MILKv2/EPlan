@@ -19,7 +19,7 @@ class OkHttpReleaseApiTest {
     @BeforeTest
     fun setUp() {
         server.start()
-        api = OkHttpReleaseApi(OkHttpClient(), server.url("/repos/MILKv2/QbitPlan/releases/latest"))
+        api = OkHttpReleaseApi(OkHttpClient(), server.url("/repos/MILKv2/EPlan/releases/latest"))
     }
 
     @AfterTest
@@ -33,7 +33,7 @@ class OkHttpReleaseApiTest {
 
         val request = server.takeRequest()
         assertEquals("GET", request.method)
-        assertEquals("/repos/MILKv2/QbitPlan/releases/latest", request.url.encodedPath)
+        assertEquals("/repos/MILKv2/EPlan/releases/latest", request.url.encodedPath)
         assertEquals("application/vnd.github+json", request.headers["Accept"])
         assertNull(request.headers["If-None-Match"])
     }

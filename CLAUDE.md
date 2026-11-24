@@ -1,6 +1,7 @@
-# QbitPlan – project rules
+# EPlan – project rules
 
-Unofficial Android timetable + substitutions app for elektryk.edupage.org (GPL-3.0).
+E-Plan: unofficial Android timetable + substitutions app for elektryk.edupage.org (GPL-3.0).
+Repo `MILKv2/EPlan`; the package and applicationId stay `dev.milkthe.qbitplan` (Firebase apps, installed copies), as do the worker name and KV namespace `qbitplan`.
 The owner does not write Kotlin; keep the code clean enough to be maintained by tools and reviewers.
 
 ## Code

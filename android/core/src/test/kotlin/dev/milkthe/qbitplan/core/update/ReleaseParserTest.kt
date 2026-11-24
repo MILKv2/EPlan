@@ -14,8 +14,8 @@ class ReleaseParserTest {
         val release = assertNotNull(ReleaseParser.parse(Fixtures.read("github/latest_release.json")))
 
         assertEquals(AppVersion(1, 0, 2), release.version)
-        assertEquals("https://github.com/MILKv2/QbitPlan/releases/tag/v1.0.2", release.pageUrl)
-        assertEquals("https://github.com/MILKv2/QbitPlan/releases/download/v1.0.2/E-Plan-v1.0.2.apk", release.apkUrl)
+        assertEquals("https://github.com/MILKv2/EPlan/releases/tag/v1.0.2", release.pageUrl)
+        assertEquals("https://github.com/MILKv2/EPlan/releases/download/v1.0.2/E-Plan-v1.0.2.apk", release.apkUrl)
     }
 
     @Test
@@ -39,5 +39,5 @@ class ReleaseParserTest {
     }
 
     private fun release(tag: String, assets: String = "[]", extra: String = "") =
-        """{"tag_name":"$tag","html_url":"https://github.com/MILKv2/QbitPlan/releases/tag/$tag","assets":$assets$extra}"""
+        """{"tag_name":"$tag","html_url":"https://github.com/MILKv2/EPlan/releases/tag/$tag","assets":$assets$extra}"""
 }

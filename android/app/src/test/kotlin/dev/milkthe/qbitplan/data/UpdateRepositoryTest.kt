@@ -44,7 +44,7 @@ class UpdateRepositoryTest {
 
         val release = assertNotNull(repo.available.first { it != null })
         assertEquals(AppVersion(1, 0, 2), release.version)
-        assertEquals("https://github.com/MILKv2/QbitPlan/releases/download/v1.0.2/E-Plan-v1.0.2.apk", release.apkUrl)
+        assertEquals("https://github.com/MILKv2/EPlan/releases/download/v1.0.2/E-Plan-v1.0.2.apk", release.apkUrl)
         assertIs<UpdateStatus.Available>(repo.status.first())
     }
 

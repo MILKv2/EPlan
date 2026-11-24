@@ -1,6 +1,6 @@
 # Dla deweloperów
 
-E-Plan (w kodzie i repo: QbitPlan, pakiet `dev.milkthe.qbitplan`).
+E-Plan (repo: EPlan; w kodzie pakiet `dev.milkthe.qbitplan`, zostaje dla zgodności z Firebase i zainstalowanymi apkami).
 
 ## Struktura repo
 

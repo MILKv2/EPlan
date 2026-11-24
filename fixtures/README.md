@@ -17,7 +17,7 @@ pobrane 2026-11-23. Korzystają z nich testy apki (`android/`) i workera
 | `substitutions/2026-09-10.json` | 〃 | zakresy lekcji `3 - 4`, `(0 - 4)` w nagłówku (starsza wersja planu) |
 | `currenttt/<klasa>_2026-11-23_27.json` | `curentttGetData` (plan bieżący, tydzień; 1at 1ct 1dt 1fl 2at 2ct 3abt 4fl) | **wyrocznia** do testów nakładania zastępstw; apka z tego endpointu nie korzysta |
 
-`github/latest_release.json` to odpowiedź GitHuba `GET /repos/MILKv2/QbitPlan/releases/latest`
+`github/latest_release.json` to odpowiedź GitHuba `GET /repos/MILKv2/EPlan/releases/latest`
 (sprawdzanie aktualizacji w apce). Repo nie miało jeszcze wydań, więc plik jest złożony
 według dokumentacji API (te same pola, wartości przykładowe), nie pobrany.
 

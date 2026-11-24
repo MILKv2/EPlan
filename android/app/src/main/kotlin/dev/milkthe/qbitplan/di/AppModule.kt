@@ -43,7 +43,7 @@ object AppModule {
         .addInterceptor { chain ->
             chain.proceed(
                 chain.request().newBuilder()
-                    .header("User-Agent", "QbitPlan/${BuildConfig.VERSION_NAME} (Android; nieoficjalna apka)")
+                    .header("User-Agent", "E-Plan/${BuildConfig.VERSION_NAME} (Android; nieoficjalna apka)")
                     .build(),
             )
         }

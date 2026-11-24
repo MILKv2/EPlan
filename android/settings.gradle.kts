@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "QbitPlan"
+rootProject.name = "EPlan"
 
 // :core is plain Kotlin (models, EduPage client, parsers, logic) so its tests run on the JVM.
 include(":core", ":app")
