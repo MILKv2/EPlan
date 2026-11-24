@@ -7,8 +7,8 @@ telefony, których plan się zmienił. Bez własnego serwera i bez bazy danych u
 
 1. Cron (`*/5 * * * *`) pobiera zastępstwa z EduPage (`mode: "classes"`).
 2. Dla każdej klasy i każdego nauczyciela z wierszy liczy skrót (hash) jego wierszy.
-3. Porównuje z poprzednim przebiegiem zapisanym w KV (`subst:<data>`, wygasa po 3 dniach,
-   zapis tylko przy zmianie). Pierwszy raz widziany dzień tylko zapisuje, bez powiadomień.
+3. Porównuje z poprzednim przebiegiem zapisanym w KV (`subst:<data>`, usuwany dzień po tej
+   dacie, zapis tylko przy zmianie). Pierwszy raz widziany dzień tylko zapisuje, bez powiadomień.
 4. Dla zmienionych klas i nauczycieli wysyła push FCM na topiki `klasa-<nazwa>` /
    `naucz-<imie-nazwisko>` (do 5 topików w jednej wiadomości). Push zawiera **tylko datę**.
 5. Telefon pobiera ten dzień sam, porównuje swój plan przed i po (z grupami ucznia) i pokazuje
