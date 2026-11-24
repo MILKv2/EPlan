@@ -1,5 +1,9 @@
 package dev.milkthe.qbitplan.ui.settings
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -66,7 +70,11 @@ fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsV
         }
 
         SettingsHeader(stringResource(R.string.settings_notifications))
-        SwitchRow(stringResource(R.string.settings_notifications_toggle), stringResource(R.string.settings_notifications_desc), state.prefs.notificationsEnabled, { vm.setNotifications(it) })
+        // Turning them on asks for the permission too (Android 13+), in case onboarding was skipped with "Później".
+        val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> vm.setNotifications(granted) }
+        SwitchRow(stringResource(R.string.settings_notifications_toggle), stringResource(R.string.settings_notifications_desc), state.prefs.notificationsEnabled, { enabled ->
+            if (enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) permission.launch(Manifest.permission.POST_NOTIFICATIONS) else vm.setNotifications(enabled)
+        })
         SwitchRow(stringResource(R.string.settings_quiet), stringResource(R.string.settings_quiet_desc), state.prefs.quietWeekends, { vm.setQuietWeekends(it) }, enabled = state.prefs.notificationsEnabled)
 
         SettingsHeader(stringResource(R.string.settings_data))

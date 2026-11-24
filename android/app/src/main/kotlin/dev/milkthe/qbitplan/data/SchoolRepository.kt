@@ -16,6 +16,7 @@ import dev.milkthe.qbitplan.di.ApplicationScope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -68,6 +69,11 @@ class SchoolRepository @Inject constructor(
             .map { entry -> entry?.parseOrNull { SubstitutionsParser.parse(date, it.body) } }
             .flowOn(Dispatchers.Default)
             .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+    }
+
+    /** The cached day as stored right now; [substitutions] may still replay an older value just after a refresh. */
+    suspend fun cachedSubstitutions(date: LocalDate): Cached<DaySubstitutions>? = withContext(Dispatchers.Default) {
+        cache.get(substitutionsKey(date))?.parseOrNull { SubstitutionsParser.parse(date, it.body) }
     }
 
     /** Versions are fetched on every refresh, so this is the last successful refresh. */

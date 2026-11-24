@@ -1,0 +1,12 @@
+[
+  { "kind": "class", "name": "1at", "topic": "klasa-1at" },
+  { "kind": "class", "name": "4dft", "topic": "klasa-4dft" },
+  { "kind": "class", "name": "BP", "topic": "klasa-bp" },
+  { "kind": "teacher", "name": "Krystian Małeta", "topic": "naucz-krystian-maleta" },
+  { "kind": "teacher", "name": "Barbara Wojtanowska-Słabik", "topic": "naucz-barbara-wojtanowska-slabik" },
+  { "kind": "teacher", "name": "Radosław Juszczęć", "topic": "naucz-radoslaw-juszczec" },
+  { "kind": "teacher", "name": "Grzegorz Półchłopek", "topic": "naucz-grzegorz-polchlopek" },
+  { "kind": "teacher", "name": "Wojciech Książkiewicz", "topic": "naucz-wojciech-ksiazkiewicz" },
+  { "kind": "teacher", "name": "Żaneta Źdźbło", "topic": "naucz-zaneta-zdzblo" },
+  { "kind": "teacher", "name": "  Anna   Grzebień ", "topic": "naucz-anna-grzebien" }
+]

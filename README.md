@@ -14,7 +14,7 @@ Nieoficjalna aplikacja na Androida z planem lekcji i zastępstwami dla
 - wszystkie zastępstwa dnia: nieobecni nauczyciele, niedostępne sale
 - wyszukiwanie: plan nauczyciela, plan sali, wolne sale teraz albo o danej godzinie
 - działanie offline na ostatnio pobranych danych
-- (etap 2) powiadomienia push o zmianach w zastępstwach
+- powiadomienia push o zmianach w Twoim planie (zastępstwa, odwołania, zmiany sal)
 
 Apka pobiera dane **bezpośrednio z EduPage**, bez własnego backendu.
 Dystrybucja: plik APK w [Releases](../../releases), bez Sklepu Play.
@@ -23,7 +23,7 @@ Dystrybucja: plik APK w [Releases](../../releases), bez Sklepu Play.
 
 ```
 android/            aplikacja (Kotlin, Jetpack Compose, Material 3)
-worker/             Cloudflare Worker: cron + push FCM (etap 2)
+worker/             Cloudflare Worker: co 5 min sprawdza zastępstwa, push FCM (zob. worker/README.md)
 docs/               edupage-api.md: opis endpointów EduPage
 fixtures/           zapisane odpowiedzi EduPage do testów (apka + worker)
 .github/workflows/  android.yml: tag v* → APK → GitHub Release

@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "680993788076",
+    "project_id": "qbitplan",
+    "storage_bucket": "qbitplan.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:680993788076:android:5615224ca50846aa6ecf09",
+        "android_client_info": {
+          "package_name": "dev.milkthe.qbitplan"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwCZ23YG-jomD-K-ID9PWtB0eZETCYcKE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:680993788076:android:241ebcd9da6ceaae6ecf09",
+        "android_client_info": {
+          "package_name": "dev.milkthe.qbitplan.debug"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwCZ23YG-jomD-K-ID9PWtB0eZETCYcKE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
