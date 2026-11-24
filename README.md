@@ -1,6 +1,6 @@
 # E-Plan
 
-Plan lekcji i zastępstwa dla **ZSP nr 5 w Krośnie (Elektryk)** na Androida.
+Plan lekcji i zastępstwa ze szkolnego EduPage na Androida.
 Twój plan z naniesionymi zastępstwami, od razu po otwarciu, także bez internetu.
 
 <p align="center">
@@ -10,8 +10,7 @@ Twój plan z naniesionymi zastępstwami, od razu po otwarciu, także bez interne
 </p>
 
 > **Nieoficjalna.** Aplikacja nie jest powiązana ze szkołą ani z firmą EduPage.
-> Pokazuje tylko to, co szkoła publikuje na [elektryk.edupage.org](https://elektryk.edupage.org)
-> bez logowania.
+> Pokazuje tylko to, co szkoła publikuje publicznie na EduPage, bez logowania.
 
 ## Co potrafi
 
