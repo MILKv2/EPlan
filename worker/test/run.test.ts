@@ -1,39 +1,33 @@
-// @ts-check
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { clearTokenCache } from '../src/fcm.js';
-import { run, stateExpiration } from '../src/index.js';
-import { substitutionsHtml, testAccount } from './helpers.js';
+import { clearTokenCache } from '../src/fcm.ts';
+import { run, stateExpiration, type Env, type KVNamespace } from '../src/index.ts';
+import { substitutionsHtml, testAccount } from './helpers.ts';
 
 const NOW = new Date('2026-11-24T08:00:00Z'); // watches 11-24, 11-25, 11-26
 const quiet = { log() {}, error() {} };
 
-class MemoryKV {
-  /** @type {Map<string, string>} */ values = new Map();
-  /** @type {Map<string, number | undefined>} */ expirations = new Map();
+class MemoryKV implements KVNamespace {
+  values = new Map<string, string>();
+  expirations = new Map<string, number | undefined>();
   puts = 0;
-  /** @param {string} key */
-  async get(key) {
+  async get(key: string): Promise<unknown> {
     const value = this.values.get(key);
     return value === undefined ? null : JSON.parse(value);
   }
-  /** @param {string} key @param {string} value @param {{ expiration?: number }} [options] */
-  async put(key, value, options) {
+  async put(key: string, value: string, options?: { expiration?: number }): Promise<void> {
     this.puts++;
     this.values.set(key, value);
     this.expirations.set(key, options?.expiration);
   }
 }
 
-/**
- * Serves fixture days (an edit hook rewrites the HTML) and records FCM sends.
- * @param {{ edit?: (date: string, html: string) => string, failSends?: boolean }} [options]
- */
-function fakeNetwork({ edit = (_, html) => html, failSends = false } = {}) {
-  /** @type {{ condition: string, data: Record<string, string> }[]} */
-  const sends = [];
-  /** @type {typeof fetch} */
-  const fetchImpl = async (url, init) => {
+type Edit = (date: string, html: string) => string;
+
+/** Serves fixture days (an edit hook rewrites the HTML) and records FCM sends. */
+function fakeNetwork({ edit = (_, html) => html, failSends = false }: { edit?: Edit; failSends?: boolean } = {}) {
+  const sends: { condition: string; data: Record<string, string> }[] = [];
+  const fetchImpl: typeof fetch = async (url, init) => {
     const target = String(url);
     if (target.includes('edupage.org')) {
       const date = JSON.parse(String(init?.body)).__args[1].date;
@@ -97,7 +91,7 @@ test('a change wakes only its class and teachers, with the date', async () => {
 test('a failed push is retried on the next run', async () => {
   const env = { STATE: new MemoryKV(), FCM_SERVICE_ACCOUNT: JSON.stringify(testAccount) };
   await run(env, { now: NOW, fetchImpl: fakeNetwork().fetchImpl, log: quiet });
-  const edit = (/** @type {string} */ date, /** @type {string} */ html) => (date === '2026-11-25' ? html.replace(/<tbody\b[\s\S]*?<\/tbody>/, '') : html);
+  const edit: Edit = (date, html) => (date === '2026-11-25' ? html.replace(/<tbody\b[\s\S]*?<\/tbody>/, '') : html);
   await run(env, { now: NOW, fetchImpl: fakeNetwork({ edit, failSends: true }).fetchImpl, log: quiet });
   const net = fakeNetwork({ edit });
   await run(env, { now: NOW, fetchImpl: net.fetchImpl, log: quiet });
@@ -106,16 +100,16 @@ test('a failed push is retried on the next run', async () => {
 });
 
 test('without the FCM key nothing is recorded', async () => {
-  const env = { STATE: new MemoryKV() };
+  const kv = new MemoryKV();
+  const env: Env = { STATE: kv };
   await run(env, { now: NOW, fetchImpl: fakeNetwork().fetchImpl, log: quiet });
-  assert.equal(env.STATE.puts, 0);
+  assert.equal(kv.puts, 0);
 });
 
 test('a broken FCM key is reported and nothing is recorded', async () => {
   const env = { STATE: new MemoryKV(), FCM_SERVICE_ACCOUNT: '{ not json' };
-  /** @type {string[]} */
-  const errors = [];
-  await run(env, { now: NOW, fetchImpl: fakeNetwork().fetchImpl, log: { log() {}, error: (/** @type {string} */ m) => errors.push(m) } });
+  const errors: string[] = [];
+  await run(env, { now: NOW, fetchImpl: fakeNetwork().fetchImpl, log: { log() {}, error: (m: string) => errors.push(m) } });
   assert.equal(env.STATE.puts, 0);
   assert.match(errors.join('\n'), /FCM_SERVICE_ACCOUNT is not a service account key file/);
 });

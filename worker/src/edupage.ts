@@ -1,18 +1,19 @@
-// @ts-check
 // Port of the parts of android/core/.../SubstitutionsParser.kt the worker needs:
 // which classes and teachers each row of the substitutions page is about.
 // Grammar: docs/edupage-api.md, section 3.
 
 const BASE_URL = 'https://elektryk.edupage.org';
 
-/**
- * @typedef {object} Row
- * @property {string} className
- * @property {string} period
- * @property {string} what  Text of the "what" cell; struck-out parts are wrapped in STRIKE_START/STRIKE_END.
- * @property {string} info  Same for the "info" cell.
- * @property {string[]} teachers Full names the row names (planned, substitute or absent).
- */
+export interface Row {
+  className: string;
+  period: string;
+  /** Text of the "what" cell; struck-out parts are wrapped in STRIKE_START/STRIKE_END. */
+  what: string;
+  /** Same for the "info" cell. */
+  info: string;
+  /** Full names the row names (planned, substitute or absent). */
+  teachers: string[];
+}
 
 const STRIKE_START = '\u0001';
 const STRIKE_END = '\u0002';
@@ -21,12 +22,8 @@ const LABELLED = /^([^:\u0001(]+):\s*(.*)$/;
 const WITHOUT_CLASS = /^\((?:Bez klasy|Without class)\s+(.+)\)$/i;
 const TEACHER_LABELS = new Set(['zastępstwa', 'zastępstwo', 'substitution', 'substitutions', 'nauczyciel', 'teacher']);
 
-/**
- * @param {string} date YYYY-MM-DD
- * @param {typeof fetch} fetchImpl
- * @returns {Promise<string>} the day's HTML
- */
-export async function fetchSubstitutionsHtml(date, fetchImpl = fetch) {
+/** The day's HTML (the "r" string of getSubstViewerDayDataHtml). */
+export async function fetchSubstitutionsHtml(date: string, fetchImpl: typeof fetch = fetch): Promise<string> {
   const response = await fetchImpl(`${BASE_URL}/substitution/server/viewer.js?__func=getSubstViewerDayDataHtml`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json; charset=UTF-8', 'User-Agent': 'E-Plan-worker (nieoficjalna apka)' },
@@ -34,27 +31,22 @@ export async function fetchSubstitutionsHtml(date, fetchImpl = fetch) {
     body: JSON.stringify({ __args: [null, { date, mode: 'classes' }], __gsh: '00000000' }),
   });
   if (!response.ok) throw new Error(`EduPage HTTP ${response.status} for ${date}`);
-  const json = /** @type {{ r?: unknown }} */ (await response.json());
+  const json = (await response.json()) as { r?: unknown };
   if (typeof json.r !== 'string') throw new Error(`EduPage: unexpected substitutions response for ${date}`);
   return json.r;
 }
 
-/**
- * @param {string} html the "r" string of getSubstViewerDayDataHtml
- * @returns {Row[]} rows in page order; empty for "no substitutions" days
- */
-export function parseSubstitutions(html) {
-  /** @type {Row[]} */
-  const rows = [];
+/** Rows in page order; empty for "no substitutions" days. */
+export function parseSubstitutions(html: string): Row[] {
+  const rows: Row[] = [];
   // One <tbody> per class; the class name is only in the first row (rowspan).
   for (const tbody of html.split(/<tbody\b/).slice(1)) {
     let className = '';
     for (const tr of tbody.split(/<tr\b/).slice(1)) {
-      /** @type {Record<string, string>} */
-      const cells = {};
+      const cells: Record<string, string> = {};
       for (const match of tr.matchAll(/<td\b([^>]*)>([\s\S]*?)<\/td>/g)) {
-        const cssClass = /\bclass="([^"]*)"/.exec(match[1])?.[1].split(/\s+/)[0];
-        if (cssClass) cells[cssClass] = match[2];
+        const cssClass = /\bclass="([^"]*)"/.exec(match[1] ?? '')?.[1]?.split(/\s+/)[0];
+        if (cssClass) cells[cssClass] = match[2] ?? '';
       }
       if (cells.header !== undefined) className = markedText(cells.header);
       const period = markedText(cells.period ?? '');
@@ -68,18 +60,14 @@ export function parseSubstitutions(html) {
   return rows;
 }
 
-/**
- * Names in the info cell: "Zastępstwa: <s>A</s> ➔ B", "Nauczyciel: A", "A, Anulowano", "<s>A</s>" (no substitute).
- * @param {string} info
- */
-function teachersOf(info) {
-  /** @type {string[]} */
-  const names = [];
+/** Names in the info cell: "Zastępstwa: <s>A</s> ➔ B", "Nauczyciel: A", "A, Anulowano", "<s>A</s>" (no substitute). */
+function teachersOf(info: string): string[] {
+  const names: string[] = [];
   let bare = false;
   for (const part of splitTopLevel(info)) {
     const labelled = LABELLED.exec(part);
     if (labelled) {
-      if (TEACHER_LABELS.has(labelled[1].trim().toLowerCase())) names.push(...changeValues(labelled[2]));
+      if (TEACHER_LABELS.has((labelled[1] ?? '').trim().toLowerCase())) names.push(...changeValues(labelled[2] ?? ''));
       continue;
     }
     if (/^(anulowano|cancelled)$/i.test(part) || WITHOUT_CLASS.test(part)) continue;
@@ -94,18 +82,17 @@ function teachersOf(info) {
   return [...new Set(names.map(clean).filter(Boolean))];
 }
 
-/** "<s>A</s> ➔ B" → [A, B]; "<s>A</s>" → [A]; "A" → [A]. @param {string} value */
-function changeValues(value) {
+/** "<s>A</s> ➔ B" → [A, B]; "<s>A</s>" → [A]; "A" → [A]. */
+function changeValues(value: string): string[] {
   const start = value.indexOf(STRIKE_START);
   const end = value.indexOf(STRIKE_END);
   if (start < 0 || end < start) return [value];
   return [value.slice(start + 1, end), value.slice(end + 1).replace(/➔|->/g, '')];
 }
 
-/** Splits on commas outside parentheses, so "(Bez klasy 1a, 2b)" stays whole. @param {string} text */
-function splitTopLevel(text) {
-  /** @type {string[]} */
-  const parts = [];
+/** Splits on commas outside parentheses, so "(Bez klasy 1a, 2b)" stays whole. */
+function splitTopLevel(text: string): string[] {
+  const parts: string[] = [];
   let depth = 0;
   let current = '';
   for (const ch of text) {
@@ -122,8 +109,8 @@ function splitTopLevel(text) {
   return parts.filter(Boolean);
 }
 
-/** Cell HTML → text with struck-out parts marked. @param {string} html */
-function markedText(html) {
+/** Cell HTML → text with struck-out parts marked. */
+function markedText(html: string): string {
   return clean(
     decodeEntities(
       html
@@ -134,12 +121,11 @@ function markedText(html) {
   );
 }
 
-/** @param {string} text */
-function decodeEntities(text) {
+function decodeEntities(text: string): string {
   return text
     .replace(/&nbsp;/g, ' ')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCodePoint(parseInt(code, 16)))
+    .replace(/&#(\d+);/g, (_, code: string) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, code: string) => String.fromCodePoint(parseInt(code, 16)))
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
@@ -147,7 +133,6 @@ function decodeEntities(text) {
     .replace(/&amp;/g, '&');
 }
 
-/** @param {string} text */
-function clean(text) {
+function clean(text: string): string {
   return text.replace(/ /g, ' ').replace(/\s+/g, ' ').trim();
 }

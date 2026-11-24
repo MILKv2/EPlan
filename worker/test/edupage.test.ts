@@ -1,8 +1,7 @@
-// @ts-check
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { parseSubstitutions } from '../src/edupage.js';
-import { substitutionsHtml } from './helpers.js';
+import { parseSubstitutions } from '../src/edupage.ts';
+import { substitutionsHtml } from './helpers.ts';
 
 test('parses every row with its class, like the app', () => {
   const rows = parseSubstitutions(substitutionsHtml('2026-11-24'));
@@ -14,10 +13,11 @@ test('parses every row with its class, like the app', () => {
 });
 
 test('collects planned, substitute and cancelled teachers', () => {
-  const rows = parseSubstitutions(substitutionsHtml('2026-11-24')).filter((r) => r.className === '1at');
-  assert.deepEqual(rows[0].teachers, ['Wojciech Książkiewicz', 'Anna Grzebień']);
-  assert.deepEqual(rows[2].teachers, ['Mariusz Czekański']);
-  assert.match(rows[0].what, /\u0001PEiE\u0002 ➔ inf/);
+  const [first, , third] = parseSubstitutions(substitutionsHtml('2026-11-24')).filter((r) => r.className === '1at');
+  assert.ok(first && third);
+  assert.deepEqual(first.teachers, ['Wojciech Książkiewicz', 'Anna Grzebień']);
+  assert.deepEqual(third.teachers, ['Mariusz Czekański']);
+  assert.match(first.what, /\u0001PEiE\u0002 ➔ inf/);
 });
 
 test('a struck-out name alone is the teacher without a substitute', () => {

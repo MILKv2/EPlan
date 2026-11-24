@@ -1,50 +1,41 @@
-// @ts-check
 // FCM HTTP v1 with a service account, without SDKs: sign a JWT, trade it for an access token.
 
-/**
- * @typedef {object} ServiceAccount
- * @property {string} project_id
- * @property {string} client_email
- * @property {string} private_key PEM, PKCS#8
- */
+export interface ServiceAccount {
+  project_id: string;
+  client_email: string;
+  /** PEM, PKCS#8 */
+  private_key: string;
+}
 
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
+const REQUIRED_FIELDS = ['project_id', 'client_email', 'private_key'] as const;
 
 /**
  * The FCM_SERVICE_ACCOUNT secret. Pasting the key file on a phone can turn the "\n" escapes in
  * private_key into real line breaks, which JSON.parse rejects; the three fields are then read
  * directly. Errors name the problem, never the secret's content.
- * @param {string} raw
- * @returns {ServiceAccount}
  */
-export function parseServiceAccount(raw) {
-  /** @type {Partial<ServiceAccount>} */
-  let account;
+export function parseServiceAccount(raw: string): ServiceAccount {
+  let account: Partial<ServiceAccount>;
   try {
-    account = JSON.parse(raw);
+    account = JSON.parse(raw) as Partial<ServiceAccount>;
   } catch {
-    const field = (/** @type {string} */ name) => new RegExp(`"${name}"\\s*:\\s*"([^"]*)"`).exec(raw)?.[1];
+    const field = (name: string) => new RegExp(`"${name}"\\s*:\\s*"([^"]*)"`).exec(raw)?.[1];
     account = { project_id: field('project_id'), client_email: field('client_email'), private_key: field('private_key') };
   }
-  const missing = ['project_id', 'client_email', 'private_key'].filter((key) => !account[/** @type {keyof ServiceAccount} */ (key)]);
+  const missing = REQUIRED_FIELDS.filter((key) => !account[key]);
   if (missing.length > 0) throw new Error(`FCM_SERVICE_ACCOUNT is not a service account key file (missing ${missing.join(', ')})`);
   if (!account.private_key?.includes('PRIVATE KEY')) throw new Error('FCM_SERVICE_ACCOUNT: private_key is not a PEM key');
-  return /** @type {ServiceAccount} */ (account);
+  return account as ServiceAccount;
 }
 
 /** A condition may combine at most five topics. */
 export const TOPICS_PER_MESSAGE = 5;
 
-/** @type {{ token: string, expiresAt: number } | null} */
-let cachedToken = null;
+let cachedToken: { token: string; expiresAt: number } | null = null;
 
-/**
- * @param {ServiceAccount} account
- * @param {typeof fetch} fetchImpl
- * @param {number} now ms
- */
-export async function accessToken(account, fetchImpl = fetch, now = Date.now()) {
+export async function accessToken(account: ServiceAccount, fetchImpl: typeof fetch = fetch, now: number = Date.now()): Promise<string> {
   if (cachedToken && cachedToken.expiresAt - 60_000 > now) return cachedToken.token;
   const assertion = await signJwt(account, Math.floor(now / 1000));
   const response = await fetchImpl(TOKEN_URL, {
@@ -53,21 +44,18 @@ export async function accessToken(account, fetchImpl = fetch, now = Date.now()) 
     body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion }),
   });
   if (!response.ok) throw new Error(`OAuth token: HTTP ${response.status} ${await response.text()}`);
-  const json = /** @type {{ access_token: string, expires_in: number }} */ (await response.json());
+  const json = (await response.json()) as { access_token: string; expires_in: number };
   cachedToken = { token: json.access_token, expiresAt: now + json.expires_in * 1000 };
   return json.access_token;
 }
 
 /** For tests. */
-export function clearTokenCache() {
+export function clearTokenCache(): void {
   cachedToken = null;
 }
 
-/**
- * @param {ServiceAccount} account
- * @param {number} issuedAt seconds
- */
-export async function signJwt(account, issuedAt) {
+/** [issuedAt] in seconds. */
+export async function signJwt(account: ServiceAccount, issuedAt: number): Promise<string> {
   const header = { alg: 'RS256', typ: 'JWT' };
   const claims = { iss: account.client_email, scope: SCOPE, aud: TOKEN_URL, iat: issuedAt, exp: issuedAt + 3600 };
   const unsigned = `${base64url(JSON.stringify(header))}.${base64url(JSON.stringify(claims))}`;
@@ -82,12 +70,17 @@ export async function signJwt(account, issuedAt) {
   return `${unsigned}.${base64url(new Uint8Array(signature))}`;
 }
 
-/**
- * A data-only message to devices subscribed to any of [topics] (at most five).
- * @param {{ token: string, projectId: string, topics: string[], data: Record<string, string>, collapseKey: string }} message
- * @param {typeof fetch} fetchImpl
- */
-export async function sendToTopics({ token, projectId, topics, data, collapseKey }, fetchImpl = fetch) {
+export interface TopicMessage {
+  token: string;
+  projectId: string;
+  /** At most five. */
+  topics: string[];
+  data: Record<string, string>;
+  collapseKey: string;
+}
+
+/** A data-only message to devices subscribed to any of [topics]. */
+export async function sendToTopics({ token, projectId, topics, data, collapseKey }: TopicMessage, fetchImpl: typeof fetch = fetch): Promise<void> {
   if (topics.length === 0 || topics.length > TOPICS_PER_MESSAGE) throw new Error(`FCM: ${topics.length} topics in one message`);
   const response = await fetchImpl(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
     method: 'POST',
@@ -104,15 +97,13 @@ export async function sendToTopics({ token, projectId, topics, data, collapseKey
   if (!response.ok) throw new Error(`FCM send: HTTP ${response.status} ${await response.text()}`);
 }
 
-/** @param {string} pem */
-function pemToDer(pem) {
+function pemToDer(pem: string): Uint8Array<ArrayBuffer> {
   // Literal "\n" pairs remain when the key was read without JSON.parse.
   const base64 = pem.replace(/-----[^-]+-----/g, '').replace(/\\n/g, '').replace(/\s+/g, '');
   return Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
 }
 
-/** @param {string | Uint8Array} input */
-function base64url(input) {
+function base64url(input: string | Uint8Array): string {
   const bytes = typeof input === 'string' ? new TextEncoder().encode(input) : input;
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);

@@ -10,7 +10,7 @@ The owner does not write Kotlin; keep the code clean enough to be maintained by 
 - Code, identifiers, logs, exception messages and commit messages in English; user-facing text in Polish in `strings.xml`.
 - Pure logic lives in `:core` (no Android) and is unit-tested against `fixtures/`.
 - Any change to parsing or substitution overlay must keep `CurrentTimetableOracleTest` green; when in doubt run `LiveOracleTest` (`QBIT_LIVE=1`).
-- Worker (`worker/`): plain ES modules with JSDoc and `// @ts-check`, no runtime dependencies; `npm test` runs against `fixtures/`. FCM topic names must match on both sides (`fixtures/topics.json`). The Firebase service account key lives only in the worker secret `FCM_SERVICE_ACCOUNT`.
+- Worker (`worker/`): TypeScript run directly by Node (type stripping, no build step), no runtime dependencies; `npm run typecheck` and `npm test` (against `fixtures/`). FCM topic names must match on both sides (`fixtures/topics.json`). The Firebase service account key lives only in the worker secret `FCM_SERVICE_ACCOUNT`.
 
 ## Performance – must run well from cheap Xiaomi phones to current flagships
 - minSdk 26, low RAM and slow CPUs are the baseline, not an edge case.

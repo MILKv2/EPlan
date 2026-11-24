@@ -1,20 +1,16 @@
-// @ts-check
-
 const WARSAW_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Warsaw', year: 'numeric', month: '2-digit', day: '2-digit' });
 
-/** School date in Poland, YYYY-MM-DD. @param {Date} now */
-export function warsawDate(now) {
+/** School date in Poland, YYYY-MM-DD. */
+export function warsawDate(now: Date): string {
   return WARSAW_DATE.format(now);
 }
 
-/** @param {string} date YYYY-MM-DD */
-function isSchoolDay(date) {
+function isSchoolDay(date: string): boolean {
   const day = new Date(`${date}T12:00:00Z`).getUTCDay();
   return day !== 0 && day !== 6;
 }
 
-/** @param {string} date YYYY-MM-DD @param {number} days */
-function addDays(date, days) {
+function addDays(date: string, days: number): string {
   const d = new Date(`${date}T12:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
@@ -23,11 +19,9 @@ function addDays(date, days) {
 /**
  * Today (if a school day) and the following school days, [count] in total. A day enters the
  * window two school days ahead, before the school usually publishes its substitutions.
- * @param {Date} now
  */
-export function watchedDates(now, count = 3) {
-  /** @type {string[]} */
-  const dates = [];
+export function watchedDates(now: Date, count = 3): string[] {
+  const dates: string[] = [];
   for (let date = warsawDate(now); dates.length < count; date = addDays(date, 1)) {
     if (isSchoolDay(date)) dates.push(date);
   }

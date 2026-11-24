@@ -1,16 +1,14 @@
-// @ts-check
 import assert from 'node:assert/strict';
 import { createVerify } from 'node:crypto';
 import { test } from 'node:test';
-import { accessToken, clearTokenCache, parseServiceAccount, sendToTopics, signJwt } from '../src/fcm.js';
-import { testAccount, testPublicKey as publicKey } from './helpers.js';
+import { accessToken, clearTokenCache, parseServiceAccount, sendToTopics, signJwt } from '../src/fcm.ts';
+import { testAccount, testPublicKey as publicKey } from './helpers.ts';
 
-/** @param {string} part */
-const decode = (part) => JSON.parse(Buffer.from(part, 'base64url').toString());
+const decode = (part: string) => JSON.parse(Buffer.from(part, 'base64url').toString());
 
 test('the JWT is RS256-signed with the service account key', async () => {
   const jwt = await signJwt(testAccount, 1_800_000_000);
-  const [header, claims, signature] = jwt.split('.');
+  const [header = '', claims = '', signature = ''] = jwt.split('.');
   assert.deepEqual(decode(header), { alg: 'RS256', typ: 'JWT' });
   assert.equal(decode(claims).iss, testAccount.client_email);
   assert.equal(decode(claims).exp - decode(claims).iat, 3600);
@@ -22,8 +20,7 @@ test('the JWT is RS256-signed with the service account key', async () => {
 test('the access token is fetched once and reused', async () => {
   clearTokenCache();
   let calls = 0;
-  /** @type {typeof fetch} */
-  const fetchImpl = async () => {
+  const fetchImpl: typeof fetch = async () => {
     calls++;
     return Response.json({ access_token: 'token-1', expires_in: 3600 });
   };
@@ -34,14 +31,13 @@ test('the access token is fetched once and reused', async () => {
 });
 
 test('one data message for up to five topics', async () => {
-  /** @type {any} */
-  let sent;
-  /** @type {typeof fetch} */
-  const fetchImpl = async (url, init) => {
-    sent = { url, body: JSON.parse(String(init?.body)), auth: /** @type {any} */ (init?.headers).Authorization };
+  let sent: { url: unknown; body: any; auth: string } | undefined;
+  const fetchImpl: typeof fetch = async (url, init) => {
+    sent = { url, body: JSON.parse(String(init?.body)), auth: (init?.headers as Record<string, string>).Authorization ?? '' };
     return new Response('{}');
   };
   await sendToTopics({ token: 't', projectId: 'p', topics: ['klasa-1at', 'naucz-anna-grzebien'], data: { date: '2026-11-25' }, collapseKey: 'subst-2026-11-25' }, fetchImpl);
+  assert.ok(sent);
   assert.equal(sent.url, 'https://fcm.googleapis.com/v1/projects/p/messages:send');
   assert.equal(sent.auth, 'Bearer t');
   assert.equal(sent.body.message.condition, "'klasa-1at' in topics || 'naucz-anna-grzebien' in topics");
@@ -59,7 +55,7 @@ test('the key file parses as pasted, even with real line breaks inside private_k
   assert.throws(() => JSON.parse(mangled));
   const account = parseServiceAccount(mangled);
   assert.equal(account.project_id, testAccount.project_id);
-  const [header, claims, signature] = (await signJwt(account, 1_800_000_000)).split('.');
+  const [header = '', claims = '', signature = ''] = (await signJwt(account, 1_800_000_000)).split('.');
   const verify = createVerify('RSA-SHA256');
   verify.update(`${header}.${claims}`);
   assert.ok(verify.verify(publicKey, Buffer.from(signature, 'base64url')));
