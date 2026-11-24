@@ -138,9 +138,9 @@ class SubstitutionsViewModel @Inject constructor(
 
     init {
         quickDays.forEach(sync::ensureSubstitutions)
-        viewModelScope.launch {
-            val start = startDay()
-            selected.compareAndSet(null, start)
+        viewModelScope.launch(Dispatchers.Default) {
+            // A pick made meanwhile wins.
+            selected.compareAndSet(null, startDay())
         }
     }
 
