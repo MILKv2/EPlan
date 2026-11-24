@@ -123,4 +123,14 @@ class RegularTimetableParserTest {
         group = groupIds.joinToString { tt.groups.getValue(it).name },
         room = classroomIds.joinToString { tt.classrooms.getValue(it).short },
     )
+
+    @Test
+    fun `long subject names fall back to acronym shorts`() {
+        fun display(short: String) = tt.subjects.values.single { it.short == short }.displayName
+        assertEquals("PiKUA", display("PiKUA"))
+        assertEquals("MUKMUE", display("MUKMUE"))
+        assertEquals("Edukacja dla bezpieczeństwa", display("Edb"))
+        assertEquals("Wychowanie fizyczne", display("WF"))
+        assertEquals("Przeglądy, konserwacja, diagnostyka i naprawa instalacji automatyki przemysłowej", display("Inst_aut_p"))
+    }
 }

@@ -16,6 +16,7 @@ import dev.milkthe.qbitplan.data.SyncState
 import dev.milkthe.qbitplan.data.prefs.UserMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.ui.common.LessonItemMapper
+import dev.milkthe.qbitplan.ui.common.withoutSubject
 import dev.milkthe.qbitplan.ui.common.PolishLocale
 import dev.milkthe.qbitplan.ui.common.text
 import dev.milkthe.qbitplan.ui.theme.toLessonStatus
@@ -165,7 +166,7 @@ class SubstitutionsViewModel @Inject constructor(
             status = type.toLessonStatus(),
             title = if (withClass) "$className · $title" else title,
             oldTitle = if (subjectChanged) name(subj.old) else null,
-            group = groups.joinToString(", ").ifEmpty { null },
+            group = groups.withoutSubject(title, subj?.new ?: subj?.old),
             oldTeacher = if (teacherChanged) teacher?.old else null,
             teacher = if (teacherChanged) teacher?.new else teacher?.old,
             oldRoom = classroom?.takeIf { it.isChanged }?.old,

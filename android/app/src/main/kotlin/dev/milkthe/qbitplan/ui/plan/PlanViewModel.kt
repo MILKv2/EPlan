@@ -8,6 +8,7 @@ import dev.milkthe.qbitplan.core.schedule.DayPlanner
 import dev.milkthe.qbitplan.core.schedule.LessonStatus
 import dev.milkthe.qbitplan.core.schedule.isSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
+import dev.milkthe.qbitplan.core.schedule.planStartDay
 import dev.milkthe.qbitplan.core.schedule.schoolWeekOf
 import dev.milkthe.qbitplan.data.Profile
 import dev.milkthe.qbitplan.data.SchoolRepository
@@ -21,17 +22,24 @@ import dev.milkthe.qbitplan.ui.common.LessonItem
 import dev.milkthe.qbitplan.ui.common.LessonItemMapper
 import dev.milkthe.qbitplan.ui.common.dayOfWeekText
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 enum class PlanMode { DAY, WEEK }
@@ -43,6 +51,7 @@ data class PlanHeader(
     val lastRefresh: Instant? = null,
     val hasTimetable: Boolean = true,
     val isTeacher: Boolean = false,
+    val onlyMyGroups: Boolean = true,
 )
 
 sealed interface DayPlanState {
@@ -55,19 +64,20 @@ sealed interface DayPlanState {
     }
 }
 
+/** The school week the plan shows and the page it opens on. */
+@Immutable
+data class PlanWeek(val dates: List<LocalDate>, val initialPage: Int, val chips: List<DayChip>)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PlanViewModel @Inject constructor(
     private val repository: SchoolRepository,
-    preferences: UserPreferencesRepository,
+    private val preferences: UserPreferencesRepository,
     private val sync: SyncManager,
-    clock: Clock,
+    private val clock: Clock,
 ) : ViewModel() {
 
     val today: LocalDate = LocalDate.now(clock)
-
-    /** Monday–Friday of this school week; on a weekend, next week. */
-    val dates: List<LocalDate> = schoolWeekOf(nearestSchoolDay(today))
-    val initialPage: Int = dates.indexOf(today).coerceAtLeast(0)
 
     private val weekendState = MutableStateFlow(!today.isSchoolDay())
     val showWeekend: StateFlow<Boolean> = weekendState.asStateFlow()
@@ -84,10 +94,35 @@ class PlanViewModel @Inject constructor(
             lastRefresh = last,
             hasTimetable = tt != null,
             isTeacher = p.mode == UserMode.TEACHER,
+            onlyMyGroups = p.onlyMyGroups,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), PlanHeader())
 
-    private val days: Map<LocalDate, StateFlow<DayPlanState>> = dates.associateWith { date ->
+    private val days = ConcurrentHashMap<LocalDate, StateFlow<DayPlanState>>()
+
+    /** `null` until today's lessons are known: once the last one is over, the plan opens on the next school day. */
+    val week: StateFlow<PlanWeek?> = flow {
+        val start = planStartDay(today, LocalTime.now(clock), lastLessonEnd(today))
+        val dates = schoolWeekOf(start)
+        dates.forEach(sync::ensureSubstitutions)
+        emit(PlanWeek(dates, dates.indexOf(start), dates.map { DayChip(it, it.dayOfWeekText(), it.dayOfMonth.toString(), it == today, false) }))
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    /** Empty until [week] is known. */
+    val dayChips: StateFlow<List<DayChip>> = week.filterNotNull().flatMapLatest { w ->
+        combine(w.dates.map(::day)) { states ->
+            w.chips.mapIndexed { i, chip -> chip.copy(hasChanges = (states[i] as? DayPlanState.Ready)?.hasChanges == true) }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    init {
+        // Usually the week the plan opens on; fetched before today's lessons are even parsed.
+        schoolWeekOf(nearestSchoolDay(today)).forEach(sync::ensureSubstitutions)
+    }
+
+    fun day(date: LocalDate): StateFlow<DayPlanState> = days.getOrPut(date) { dayPlan(date) }
+
+    private fun dayPlan(date: LocalDate): StateFlow<DayPlanState> =
         combine(repository.timetable, repository.substitutions(date), prefs) { tt, subs, p ->
             if (tt == null) return@combine DayPlanState.NoData
             val timetable = tt.value
@@ -110,25 +145,13 @@ class PlanViewModel @Inject constructor(
                 periodStarts = timetable.periods.associate { it.number to it.start },
             )
         }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayPlanState.Loading)
+
+    /** A day of only cancelled lessons still ends after the last of them. */
+    private suspend fun lastLessonEnd(date: LocalDate): LocalTime? {
+        if (!date.isSchoolDay()) return null
+        val lessons = (day(date).first { it != DayPlanState.Loading } as? DayPlanState.Ready)?.lessons ?: return null
+        return lessons.filter { it.status.takesPlace }.ifEmpty { lessons }.mapNotNull { it.end }.maxOrNull()
     }
-
-    val dayChips: StateFlow<List<DayChip>> = combine(dates.map { days.getValue(it) }) { states ->
-        dates.mapIndexed { i, date ->
-            DayChip(
-                date = date,
-                weekday = date.dayOfWeekText(),
-                day = date.dayOfMonth.toString(),
-                isToday = date == today,
-                hasChanges = (states[i] as? DayPlanState.Ready)?.hasChanges == true,
-            )
-        }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), dates.map { DayChip(it, it.dayOfWeekText(), it.dayOfMonth.toString(), it == today, false) })
-
-    init {
-        dates.forEach(sync::ensureSubstitutions)
-    }
-
-    fun day(date: LocalDate): StateFlow<DayPlanState> = days.getValue(date)
 
     fun toggleWeek() {
         weekendState.value = false
@@ -139,6 +162,8 @@ class PlanViewModel @Inject constructor(
         weekendState.value = false
         modeState.value = PlanMode.DAY
     }
+
+    fun setOnlyMyGroups(enabled: Boolean) = viewModelScope.launch { preferences.setOnlyMyGroups(enabled) }
 
     fun refresh() = sync.refresh()
 }

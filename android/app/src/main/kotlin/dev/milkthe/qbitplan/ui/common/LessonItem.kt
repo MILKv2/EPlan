@@ -41,7 +41,7 @@ data class LessonItem(
 
 class LessonItemMapper(private val tt: Timetable) {
 
-    private val subjectNames = tt.subjects.values.associate { it.short to it.name }
+    private val subjectNames = tt.subjects.values.associate { it.short to it.displayName }
 
     fun subjectName(short: String?): String = short?.let { subjectNames[it] ?: it }.orEmpty()
 
@@ -101,9 +101,13 @@ class LessonItemMapper(private val tt: Timetable) {
             oldRoom = if (roomChanged) room.old else null,
             who = who,
             oldWho = oldWho,
-            groups = l.groupNames.joinToString(", ").ifEmpty { null },
+            groups = l.groupNames.withoutSubject(name, subjectShort),
             note = note,
             status = l.status,
         )
     }
 }
+
+/** Groups named after their subject (e.g. "Religia") would only repeat the title. */
+internal fun List<String>.withoutSubject(vararg subject: String?): String? =
+    filterNot { group -> subject.any { it != null && group.equals(it, ignoreCase = true) } }.joinToString(", ").ifEmpty { null }

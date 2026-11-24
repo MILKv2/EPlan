@@ -45,6 +45,5 @@ class SettingsViewModel @Inject constructor(
     fun setNotifications(enabled: Boolean) = viewModelScope.launch { preferences.setNotificationsEnabled(enabled) }
     fun setQuietWeekends(enabled: Boolean) = viewModelScope.launch { preferences.setQuietWeekends(enabled) }
     fun setOnlyMyGroups(enabled: Boolean) = viewModelScope.launch { preferences.setOnlyMyGroups(enabled) }
-    fun changeProfile() = viewModelScope.launch { preferences.clearMode() }
     fun refresh() = sync.refresh()
 }

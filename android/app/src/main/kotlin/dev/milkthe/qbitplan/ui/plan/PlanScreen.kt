@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,15 +35,22 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarViewWeek
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.WbSunny
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -84,80 +92,151 @@ import dev.milkthe.qbitplan.ui.theme.style
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
+/** [onEditProfile]: the profile editor; [onOpenSettings]: the Settings tab. */
 @Composable
-fun PlanScreen(onOpenProfile: () -> Unit, vm: PlanViewModel = hiltViewModel()) {
+fun PlanScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, vm: PlanViewModel = hiltViewModel()) {
+    val menu = remember(onEditProfile, onOpenSettings, vm) { PlanMenuActions(onEditProfile, onOpenSettings, vm::setOnlyMyGroups) }
     val header by vm.header.collectAsStateWithLifecycle()
-    val chips by vm.dayChips.collectAsStateWithLifecycle()
+    val week by vm.week.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
     val weekend by vm.showWeekend.collectAsStateWithLifecycle()
-    val pager = rememberPagerState(initialPage = vm.initialPage) { vm.dates.size }
-    val scope = rememberCoroutineScope()
-    var collapsed by remember { mutableStateOf(false) }
     val isWeek = mode == PlanMode.WEEK && !weekend
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
-        AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ProfileChip(header.profile, onOpenProfile, Modifier.weight(1f, fill = false))
-                Spacer(Modifier.weight(1f))
-                RoundIconButton(
-                    icon = Icons.Outlined.CalendarViewWeek,
-                    contentDescription = stringResource(if (isWeek) R.string.plan_show_day else R.string.plan_show_week),
-                    onClick = vm::toggleWeek,
-                    size = 40.dp,
-                    background = if (isWeek) QbitTheme.colors.accent.soft else androidx.compose.ui.graphics.Color.Transparent,
-                    tint = if (isWeek) QbitTheme.colors.accent.softForeground else QbitTheme.colors.foreground,
-                )
+        when (val w = week) {
+            null -> {
+                PlanTopBar(header, isWeek, menu, vm::toggleWeek)
+                LoadingBox()
             }
+            else -> PlanContent(vm, w, header, isWeek, weekend, menu)
         }
-        if (!isWeek) {
-            DaySelector(
-                days = chips,
-                position = if (weekend) -1f else pager.currentPage + pager.currentPageOffsetFraction,
-                onSelect = { index ->
-                    vm.showDay()
-                    scope.launch { pager.animateScrollToPage(index) }
-                },
-                collapsed = collapsed,
-                modifier = Modifier.padding(vertical = if (collapsed) 8.dp else 0.dp),
-            )
-        }
-        AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                SyncLine(header.sync, header.lastRefresh, vm::refresh)
-            }
-        }
-        Hairline()
-        when {
-            !header.hasTimetable && header.sync.refreshing -> LoadingBox()
-            !header.hasTimetable -> StateMessage(
-                icon = Icons.Outlined.EventBusy,
-                tone = QbitTheme.colors.danger,
-                title = stringResource(R.string.error_title),
-                text = stringResource(R.string.error_text),
-            ) { QbitButton(stringResource(R.string.retry), vm::refresh) }
-            weekend -> Weekend(vm.dates.first(), onShowMonday = {
+    }
+}
+
+@Immutable
+private class PlanMenuActions(val onEditProfile: () -> Unit, val onOpenSettings: () -> Unit, val onOnlyMyGroups: (Boolean) -> Unit)
+
+@Composable
+private fun PlanTopBar(header: PlanHeader, isWeek: Boolean, menu: PlanMenuActions, onToggleWeek: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        // The only weighted child, so the chip may take all the width the button leaves.
+        Box(Modifier.weight(1f)) { ProfileMenu(header, menu) }
+        RoundIconButton(
+            icon = Icons.Outlined.CalendarViewWeek,
+            contentDescription = stringResource(if (isWeek) R.string.plan_show_day else R.string.plan_show_week),
+            onClick = onToggleWeek,
+            size = 40.dp,
+            background = if (isWeek) QbitTheme.colors.accent.soft else androidx.compose.ui.graphics.Color.Transparent,
+            tint = if (isWeek) QbitTheme.colors.accent.softForeground else QbitTheme.colors.foreground,
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.PlanContent(
+    vm: PlanViewModel,
+    week: PlanWeek,
+    header: PlanHeader,
+    isWeek: Boolean,
+    weekend: Boolean,
+    menu: PlanMenuActions,
+) {
+    val chips by vm.dayChips.collectAsStateWithLifecycle()
+    val pager = rememberPagerState(initialPage = week.initialPage) { week.dates.size }
+    val scope = rememberCoroutineScope()
+    var collapsed by remember { mutableStateOf(false) }
+
+    AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        PlanTopBar(header, isWeek, menu, vm::toggleWeek)
+    }
+    if (!isWeek) {
+        DaySelector(
+            days = chips.ifEmpty { week.chips },
+            position = if (weekend) -1f else pager.currentPage + pager.currentPageOffsetFraction,
+            onSelect = { index ->
                 vm.showDay()
-                scope.launch { pager.scrollToPage(0) }
-            })
-            isWeek -> WeekGrid(vm, header.isTeacher, onPick = { index ->
-                vm.showDay()
-                scope.launch { pager.scrollToPage(index) }
-            })
-            else -> PullToRefreshBox(isRefreshing = header.sync.refreshing, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
-                HorizontalPager(state = pager, key = { vm.dates[it].toEpochDay() }, modifier = Modifier.fillMaxSize()) { page ->
-                    DayPage(vm, vm.dates[page], isCurrent = pager.currentPage == page, onCollapsed = { collapsed = it })
-                }
+                scope.launch { pager.animateScrollToPage(index) }
+            },
+            collapsed = collapsed,
+            modifier = Modifier.padding(vertical = if (collapsed) 8.dp else 0.dp),
+        )
+    }
+    AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            SyncLine(header.sync, header.lastRefresh, vm::refresh)
+        }
+    }
+    Hairline()
+    when {
+        !header.hasTimetable && header.sync.refreshing -> LoadingBox()
+        !header.hasTimetable -> StateMessage(
+            icon = Icons.Outlined.EventBusy,
+            tone = QbitTheme.colors.danger,
+            title = stringResource(R.string.error_title),
+            text = stringResource(R.string.error_text),
+        ) { QbitButton(stringResource(R.string.retry), vm::refresh) }
+        weekend -> Weekend(week.dates.first(), onShowMonday = {
+            vm.showDay()
+            scope.launch { pager.scrollToPage(0) }
+        })
+        isWeek -> WeekGrid(vm, week.dates, header.isTeacher, onPick = { index ->
+            vm.showDay()
+            scope.launch { pager.scrollToPage(index) }
+        })
+        else -> PullToRefreshBox(isRefreshing = header.sync.refreshing, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
+            HorizontalPager(state = pager, key = { week.dates[it].toEpochDay() }, modifier = Modifier.fillMaxSize()) { page ->
+                DayPage(vm, week.dates[page], isCurrent = pager.currentPage == page, onCollapsed = { collapsed = it })
             }
         }
     }
 }
 
 @Composable
-private fun ProfileChip(profile: Profile?, onClick: () -> Unit, modifier: Modifier) {
+private fun ProfileMenu(header: PlanHeader, actions: PlanMenuActions) {
+    val colors = QbitTheme.colors
+    var open by remember { mutableStateOf(false) }
+    Box {
+        ProfileChip(header.profile, onClick = { open = true })
+        DropdownMenu(
+            expanded = open,
+            onDismissRequest = { open = false },
+            shape = RoundedCornerShape(QbitTheme.radius.card),
+            containerColor = colors.surface,
+        ) {
+            if (header.profile is Profile.Student) {
+                DropdownMenuItem(
+                    text = { Text(stringResource(R.string.settings_only_my_groups), style = MaterialTheme.typography.bodyLarge) },
+                    onClick = { actions.onOnlyMyGroups(!header.onlyMyGroups) },
+                    leadingIcon = { Icon(Icons.Outlined.FilterList, contentDescription = null, tint = colors.muted) },
+                    trailingIcon = { if (header.onlyMyGroups) Icon(Icons.Outlined.Check, contentDescription = null, tint = colors.accent.softForeground) },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text(stringResource(if (header.isTeacher) R.string.plan_change_teacher else R.string.plan_change_profile), style = MaterialTheme.typography.bodyLarge) },
+                onClick = {
+                    open = false
+                    actions.onEditProfile()
+                },
+                leadingIcon = { Icon(Icons.Outlined.Edit, contentDescription = null, tint = colors.muted) },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.tab_settings), style = MaterialTheme.typography.bodyLarge) },
+                onClick = {
+                    open = false
+                    actions.onOpenSettings()
+                },
+                leadingIcon = { Icon(Icons.Outlined.Settings, contentDescription = null, tint = colors.muted) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileChip(profile: Profile?, onClick: () -> Unit) {
     val colors = QbitTheme.colors
     val (main, sub) = when (profile) {
         is Profile.Student -> profile.schoolClass.short to profile.groupNames.sorted().joinToString(" · ").ifEmpty { stringResource(R.string.plan_whole_class) }
@@ -165,11 +244,11 @@ private fun ProfileChip(profile: Profile?, onClick: () -> Unit, modifier: Modifi
         null -> "" to ""
     }
     Row(
-        modifier = modifier
+        modifier = Modifier
             .height(40.dp)
             .clip(CircleShape)
             .background(colors.default)
-            .clickable(role = Role.Button, onClickLabel = stringResource(R.string.plan_change_profile), onClick = onClick)
+            .clickable(role = Role.DropdownList, onClickLabel = stringResource(R.string.plan_options), onClick = onClick)
             .padding(start = 14.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -222,8 +301,8 @@ private fun Weekend(monday: LocalDate, onShowMonday: () -> Unit) {
 }
 
 @Composable
-private fun WeekGrid(vm: PlanViewModel, isTeacher: Boolean, onPick: (Int) -> Unit) {
-    val states = vm.dates.map { remember(it) { vm.day(it) }.collectAsStateWithLifecycle().value }
+private fun WeekGrid(vm: PlanViewModel, dates: List<LocalDate>, isTeacher: Boolean, onPick: (Int) -> Unit) {
+    val states = dates.map { remember(it) { vm.day(it) }.collectAsStateWithLifecycle().value }
     val ready = states.filterIsInstance<DayPlanState.Ready>()
     if (ready.size < states.size) {
         LoadingBox()
@@ -238,7 +317,7 @@ private fun WeekGrid(vm: PlanViewModel, isTeacher: Boolean, onPick: (Int) -> Uni
         stickyHeader(key = "head") {
             Row(Modifier.fillMaxWidth().background(colors.background).padding(vertical = 6.dp)) {
                 Spacer(Modifier.width(40.dp))
-                vm.dates.forEachIndexed { i, date ->
+                dates.forEachIndexed { i, date ->
                     val today = date == vm.today
                     Column(
                         Modifier

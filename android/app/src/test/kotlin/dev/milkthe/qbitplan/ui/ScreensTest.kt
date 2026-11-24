@@ -103,7 +103,7 @@ class ScreensTest {
     @Test
     fun planStudentLight() {
         student()
-        show { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_light")
     }
@@ -111,7 +111,7 @@ class ScreensTest {
     @Test
     fun planStudentDark() {
         student()
-        show(dark = true) { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_dark")
     }
@@ -120,7 +120,7 @@ class ScreensTest {
     fun planWeek() {
         student()
         val vm = PlanViewModel(repo, prefs, sync, clock).apply { toggleWeek() }
-        show { PlanScreen(onOpenProfile = {}, vm = vm) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = vm) }
         waitForText("Pt")
         capture("plan_week")
     }
@@ -128,7 +128,7 @@ class ScreensTest {
     @Test
     fun planTeacher() {
         teacher()
-        show { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("1at")
         capture("plan_teacher")
     }
@@ -171,7 +171,7 @@ class ScreensTest {
     @Test
     fun settings() {
         student()
-        show { SettingsScreen(onAbout = {}, vm = SettingsViewModel(repo, prefs, sync)) }
+        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync)) }
         waitForText("Ostatnia synchronizacja")
         capture("settings")
     }

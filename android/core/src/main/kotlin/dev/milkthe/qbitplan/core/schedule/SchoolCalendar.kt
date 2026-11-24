@@ -2,6 +2,7 @@ package dev.milkthe.qbitplan.core.schedule
 
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
 fun LocalDate.isSchoolDay(): Boolean = dayOfWeek != DayOfWeek.SATURDAY && dayOfWeek != DayOfWeek.SUNDAY
@@ -11,6 +12,13 @@ fun nearestSchoolDay(date: LocalDate): LocalDate =
     generateSequence(date) { it.plusDays(1) }.first { it.isSchoolDay() }
 
 fun nextSchoolDay(date: LocalDate): LocalDate = nearestSchoolDay(date.plusDays(1))
+
+/** The day a plan opens on: today until its last lesson ([lastLessonEnd]) is over, then the next school day. */
+fun planStartDay(today: LocalDate, now: LocalTime, lastLessonEnd: LocalTime?): LocalDate = when {
+    !today.isSchoolDay() -> nearestSchoolDay(today)
+    lastLessonEnd != null && now >= lastLessonEnd -> nextSchoolDay(today)
+    else -> today
+}
 
 fun upcomingSchoolDays(from: LocalDate, count: Int): List<LocalDate> =
     generateSequence(nearestSchoolDay(from)) { nextSchoolDay(it) }.take(count).toList()

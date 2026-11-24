@@ -6,6 +6,7 @@
     <string name="back">Wstecz</string>
     <string name="next">Dalej</string>
     <string name="next_with">Dalej · %1$s</string>
+    <string name="save">Zapisz</string>
     <string name="clear">Wyczyść</string>
     <string name="retry">Spróbuj ponownie</string>
     <string name="refresh">Odśwież</string>
@@ -44,6 +45,8 @@
     <!-- Plan -->
     <string name="plan_whole_class">cała klasa</string>
     <string name="plan_change_profile">Zmień klasę i grupy</string>
+    <string name="plan_change_teacher">Zmień skrót i nazwisko</string>
+    <string name="plan_options">Opcje planu</string>
     <string name="plan_show_week">Pokaż tydzień</string>
     <string name="plan_show_day">Pokaż dzień</string>
     <string name="plan_no_lessons_title">Brak lekcji</string>
@@ -184,9 +187,10 @@
     <string name="division_pe">Wychowanie fizyczne</string>
     <string name="division_religion">Religia / etyka</string>
     <string name="onboarding_teacher_title">Twój skrót</string>
-    <string name="onboarding_teacher_text">W EduPage nauczyciele mają skróty. Wybierz swój i dopisz imię.</string>
+    <string name="onboarding_teacher_text">W EduPage nauczyciele mają skróty. Wybierz swój, imię i nazwisko dopiszesz w następnym kroku.</string>
     <string name="onboarding_teacher_search">Szukaj skrótu, np. RzM</string>
     <string name="onboarding_name_title">Imię i nazwisko</string>
+    <string name="onboarding_name_text">Zastępstwa podają imię i nazwisko, a plan tylko skrót %1$s. Tak połączymy jedno z drugim.</string>
     <string name="onboarding_name_matches">Pasuje do skrótu %1$s</string>
     <string name="onboarding_name_manual">Wpiszę ręcznie</string>
     <string name="onboarding_name_manual_desc">Tak jak w zastępstwach</string>
