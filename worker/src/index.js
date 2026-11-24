@@ -4,7 +4,7 @@
 // the app fetches the day itself and works out what changed in its own plan.
 import { changedTopics, fingerprints } from './changes.js';
 import { fetchSubstitutionsHtml, parseSubstitutions } from './edupage.js';
-import { accessToken, sendToTopics, TOPICS_PER_MESSAGE } from './fcm.js';
+import { accessToken, parseServiceAccount, sendToTopics, TOPICS_PER_MESSAGE } from './fcm.js';
 import { watchedDates } from './calendar.js';
 
 /**
@@ -40,7 +40,14 @@ export async function run(env, { now = new Date(), fetchImpl = fetch, log = cons
     log.error('FCM_SERVICE_ACCOUNT is not set; nothing checked');
     return;
   }
-  const account = JSON.parse(env.FCM_SERVICE_ACCOUNT);
+  /** @type {import('./fcm.js').ServiceAccount} */
+  let account;
+  try {
+    account = parseServiceAccount(env.FCM_SERVICE_ACCOUNT);
+  } catch (error) {
+    log.error(`${error instanceof Error ? error.message : error}; nothing checked`);
+    return;
+  }
   let sendsLeft = MAX_SENDS_PER_RUN;
   /** @type {(topics: string[], date: string) => Promise<void>} */
   const notify = async (topics, date) => {
