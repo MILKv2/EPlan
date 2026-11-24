@@ -2,10 +2,10 @@ name: Tests
 
 on:
   pull_request:
-    paths: ["android/**", "fixtures/**", ".github/workflows/tests.yml"]
+    paths: ["android/**", "worker/**", "fixtures/**", ".github/workflows/tests.yml"]
   push:
     branches: [main]
-    paths: ["android/**", "fixtures/**", ".github/workflows/tests.yml"]
+    paths: ["android/**", "worker/**", "fixtures/**", ".github/workflows/tests.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -39,3 +39,21 @@ jobs:
           name: test-reports
           path: android/*/build/reports/tests/
           retention-days: 7
+
+  # The worker deploys itself through Cloudflare's Git integration; this only tests it.
+  worker-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - run: npm ci
+
+      - run: npm test
