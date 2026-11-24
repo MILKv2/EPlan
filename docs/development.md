@@ -9,7 +9,7 @@ android/            aplikacja (Kotlin, Jetpack Compose, Material 3), zob. androi
 worker/             Cloudflare Worker: co 5 min sprawdza zastępstwa, push FCM, zob. worker/README.md
 docs/               edupage-api.md: opis endpointów EduPage; screenshots/: zrzuty do README
 fixtures/           zapisane odpowiedzi EduPage do testów (apka + worker)
-.github/workflows/  android.yml: tag v* → APK → GitHub Release
+.github/workflows/  android.yml: nowa wersja w android/version.properties na main → APK → GitHub Release
                     tests.yml: testy apki
                     worker.yml: zmiany w worker/** → wrangler deploy
 ```
@@ -33,9 +33,22 @@ Zrzuty w `docs/screenshots/` pochodzą z tego ostatniego polecenia.
 
 ## Wydanie
 
-Wersja bierze się z tagu: wypchnięcie `v*` (np. `v1.0.1`) buduje podpisany APK
-`E-Plan-v1.0.1.apk` i publikuje go jako GitHub Release. Bez tagu wersja to ta wpisana
-w `android/app/build.gradle.kts`.
+Wersja jest w jednym miejscu: `android/version.properties` (`versionName=1.0.1`).
+Z niej Gradle liczy `versionCode` (`1.2.3` → `10203`), więc każdy build, lokalny i z CI,
+ma właściwy numer, widoczny w „O aplikacji”.
+
+Jak wydać nową wersję:
+
+1. W PR zmień `versionName` w `android/version.properties` (np. `1.0.1` → `1.0.2`).
+   Poprawka: ostatnia liczba; nowa funkcja: środkowa (`1.1.0`). Każda liczba poniżej 100.
+2. Zmerguj PR do `main`. Workflow `android.yml` uruchomi testy, zbuduje podpisany
+   `E-Plan-v1.0.2.apk`, utworzy tag `v1.0.2` i Release z listą zmian z PR-ów.
+3. Apki sprawdzają ostatni Release najwyżej co 12 h. Gdy jest nowszy, na zakładce
+   Ustawienia pojawia się kropka i przycisk „Pobierz” (link do APK z Release).
+
+Tagów nie tworzy się ręcznie. Jeśli workflow padł, uruchom go ponownie („Run workflow”);
+wersja, która ma już tag, jest pomijana. Sprawdzanie aktualizacji używa publicznego API
+GitHuba bez logowania, więc działa tylko przy publicznym repo.
 
 Workflow potrzebuje sekretów repo: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`,
 `KEY_PASSWORD`. Lokalnie podpis release czyta `android/keystore.properties`

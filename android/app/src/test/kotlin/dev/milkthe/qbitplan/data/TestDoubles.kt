@@ -1,6 +1,8 @@
 package dev.milkthe.qbitplan.data
 
 import dev.milkthe.qbitplan.core.edupage.EdupageApi
+import dev.milkthe.qbitplan.core.update.ReleaseApi
+import dev.milkthe.qbitplan.core.update.ReleaseResponse
 import dev.milkthe.qbitplan.data.local.CachedEntry
 import dev.milkthe.qbitplan.data.local.ResponseCache
 import kotlinx.coroutines.flow.Flow
@@ -64,4 +66,13 @@ class MutableClock(var now: Instant, private val zone: ZoneId) : Clock() {
     override fun instant(): Instant = now
     override fun getZone(): ZoneId = zone
     override fun withZone(zone: ZoneId): Clock = MutableClock(now, zone)
+}
+
+/** Answers with [next]; records the ETag of each call. */
+class FakeReleaseApi(var next: () -> ReleaseResponse = { ReleaseResponse.NoRelease }) : ReleaseApi {
+    val etags = mutableListOf<String?>()
+    override suspend fun fetchLatest(etag: String?): ReleaseResponse {
+        etags += etag
+        return next()
+    }
 }

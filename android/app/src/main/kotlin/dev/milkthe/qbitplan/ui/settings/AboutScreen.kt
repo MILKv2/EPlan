@@ -19,12 +19,17 @@ import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,8 +37,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.milkthe.qbitplan.BuildConfig
 import dev.milkthe.qbitplan.R
+import dev.milkthe.qbitplan.core.update.AppRelease
+import dev.milkthe.qbitplan.data.UpdateStatus
 import dev.milkthe.qbitplan.ui.common.BackHeader
 import dev.milkthe.qbitplan.ui.common.Chevron
 import dev.milkthe.qbitplan.ui.common.SettingsRow
@@ -44,8 +53,9 @@ private const val REPO_URL = "https://github.com/MILKv2/QbitPlan"
 private const val LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
 
 @Composable
-fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit) {
+fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit, vm: AboutViewModel = hiltViewModel()) {
     val uri = LocalUriHandler.current
+    val update by vm.update.collectAsStateWithLifecycle()
     val colors = QbitTheme.colors
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         BackHeader(stringResource(R.string.settings_about), onBack)
@@ -63,10 +73,36 @@ fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp).clip(RoundedCornerShape(16.dp)).background(colors.surfaceSecondary).padding(horizontal = 16.dp, vertical = 14.dp),
             )
+            UpdateRow(update, onCheck = vm::checkNow, onDownload = { uri.openUri(it.apkUrl ?: it.pageUrl) })
             LinkRow(Icons.Outlined.Person, stringResource(R.string.about_author), stringResource(R.string.about_author_value)) { uri.openUri(AUTHOR_URL) }
             LinkRow(Icons.Outlined.Code, stringResource(R.string.about_source), stringResource(R.string.about_source_value)) { uri.openUri(REPO_URL) }
             LinkRow(Icons.Outlined.Description, stringResource(R.string.about_license), stringResource(R.string.about_license_value)) { uri.openUri(LICENSE_URL) }
             SettingsRow(stringResource(R.string.about_oss_licenses), stringResource(R.string.about_oss_desc), onClick = onLicenses, leading = { Icon(Icons.AutoMirrored.Outlined.LibraryBooks, contentDescription = null, tint = colors.muted) }) { Chevron() }
+        }
+    }
+}
+
+@Composable
+private fun UpdateRow(status: UpdateStatus, onCheck: () -> Unit, onDownload: (AppRelease) -> Unit) {
+    val colors = QbitTheme.colors
+    val subtitle = when (status) {
+        UpdateStatus.NeverChecked -> stringResource(R.string.about_update_never)
+        UpdateStatus.Checking -> stringResource(R.string.about_update_checking)
+        UpdateStatus.UpToDate -> stringResource(R.string.about_update_latest)
+        is UpdateStatus.Available -> stringResource(R.string.about_update_available, status.release.version.toString())
+        UpdateStatus.Failed -> stringResource(R.string.about_update_failed)
+    }
+    SettingsRow(
+        title = stringResource(R.string.about_updates),
+        subtitle = subtitle,
+        onClick = { if (status is UpdateStatus.Available) onDownload(status.release) else onCheck() },
+        enabled = status != UpdateStatus.Checking,
+        leading = { Icon(Icons.Outlined.SystemUpdate, contentDescription = null, tint = if (status is UpdateStatus.Available) colors.accent.softForeground else colors.muted) },
+    ) {
+        when (status) {
+            UpdateStatus.Checking -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = colors.muted)
+            is UpdateStatus.Available -> Icon(Icons.Outlined.Download, contentDescription = null, tint = colors.accent.softForeground, modifier = Modifier.size(20.dp))
+            else -> Icon(Icons.Outlined.Refresh, contentDescription = null, tint = colors.muted, modifier = Modifier.size(20.dp))
         }
     }
 }

@@ -15,6 +15,9 @@ import dagger.hilt.components.SingletonComponent
 import dev.milkthe.qbitplan.BuildConfig
 import dev.milkthe.qbitplan.core.edupage.EdupageApi
 import dev.milkthe.qbitplan.core.edupage.OkHttpEdupageApi
+import dev.milkthe.qbitplan.core.update.AppVersion
+import dev.milkthe.qbitplan.core.update.OkHttpReleaseApi
+import dev.milkthe.qbitplan.core.update.ReleaseApi
 import dev.milkthe.qbitplan.data.local.AppDatabase
 import dev.milkthe.qbitplan.data.local.CachedResponseDao
 import dev.milkthe.qbitplan.data.local.ResponseCache
@@ -49,6 +52,14 @@ object AppModule {
     @Provides
     @Singleton
     fun edupageApi(client: OkHttpClient): EdupageApi = OkHttpEdupageApi(client)
+
+    @Provides
+    @Singleton
+    fun releaseApi(client: OkHttpClient): ReleaseApi = OkHttpReleaseApi(client)
+
+    /** The build fails on a malformed version.properties, so this always parses. */
+    @Provides
+    fun installedVersion(): AppVersion = requireNotNull(AppVersion.parse(BuildConfig.VERSION_NAME))
 
     @Provides
     @Singleton
