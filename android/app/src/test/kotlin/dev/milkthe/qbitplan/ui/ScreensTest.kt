@@ -124,7 +124,7 @@ class ScreensTest {
         show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Informatyka")
         compose.onAllNodesWithText("Informatyka", substring = true).onFirst().performClick()
-        waitForText("W EduPage:")
+        waitForText("Sala")
         waitForText("Podstawy elektrotechniki i elektroniki")
     }
 
