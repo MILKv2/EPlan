@@ -13,9 +13,8 @@ import { watchedDates } from './calendar.js';
  * @property {string} [FCM_SERVICE_ACCOUNT] service account JSON (wrangler secret)
  */
 
-/** @typedef {{ get(key: string, type: 'json'): Promise<any>, put(key: string, value: string, options?: { expirationTtl?: number }): Promise<void> }} KVNamespace */
+/** @typedef {{ get(key: string, type: 'json'): Promise<any>, put(key: string, value: string, options?: { expiration?: number }): Promise<void> }} KVNamespace */
 
-const STATE_TTL_SECONDS = 3 * 24 * 60 * 60;
 // Free plan: 50 subrequests per run. 3 fetches + 1 token leave room for this many sends;
 // topics beyond it keep their old fingerprint and go out on the next run.
 const MAX_SENDS_PER_RUN = 40;
@@ -76,11 +75,12 @@ export async function run(env, { now = new Date(), fetchImpl = fetch, log = cons
 async function checkDay(env, date, sendsLeft, notify, fetchImpl, log) {
   const current = await fingerprints(parseSubstitutions(await fetchSubstitutionsHtml(date, fetchImpl)));
   const key = `subst:${date}`;
+  const expiration = stateExpiration(date);
   /** @type {Record<string, string> | null} */
   const previous = await env.STATE.get(key, 'json');
   if (previous === null) {
     // First sighting of the day (new in the window, or a fresh deploy): remember, don't notify.
-    await env.STATE.put(key, JSON.stringify(current), { expirationTtl: STATE_TTL_SECONDS });
+    await env.STATE.put(key, JSON.stringify(current), { expiration });
     return 0;
   }
 
@@ -104,7 +104,17 @@ async function checkDay(env, date, sendsLeft, notify, fetchImpl, log) {
     }
   }
   if (changedTopics(previous, stored).length > 0) {
-    await env.STATE.put(key, JSON.stringify(stored), { expirationTtl: STATE_TTL_SECONDS });
+    await env.STATE.put(key, JSON.stringify(stored), { expiration });
   }
   return sent;
+}
+
+/**
+ * Unix seconds when a day's fingerprints may go: a day after it ends. A fixed point rather than a
+ * TTL, because the key is written only on change and a day can sit in the window for up to 5
+ * calendar days (Friday → Tuesday); a TTL could drop it mid-window and swallow the next change.
+ * @param {string} date YYYY-MM-DD
+ */
+export function stateExpiration(date) {
+  return Date.parse(`${date}T00:00:00Z`) / 1000 + 2 * 24 * 60 * 60;
 }

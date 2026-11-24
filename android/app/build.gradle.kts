@@ -13,7 +13,7 @@ plugins {
 }
 
 // CI sets QBIT_VERSION_NAME from the tag (v1.2.3).
-val appVersionName: String = System.getenv("QBIT_VERSION_NAME")?.removePrefix("v") ?: "0.1.0-dev"
+val appVersionName: String = System.getenv("QBIT_VERSION_NAME")?.removePrefix("v") ?: "1.0.0"
 
 // 1.2.3 → 10203
 val appVersionCode: Int = Regex("""^(\d+)\.(\d+)\.(\d+)""").find(appVersionName)
