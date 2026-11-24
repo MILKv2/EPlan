@@ -1,7 +1,6 @@
-// @ts-check
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { warsawDate, watchedDates } from '../src/calendar.js';
+import { warsawDate, watchedDates } from '../src/calendar.ts';
 
 test('dates are Polish, not UTC', () => {
   // Monday 00:30 in Warsaw is still Sunday in UTC.

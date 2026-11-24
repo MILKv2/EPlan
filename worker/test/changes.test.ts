@@ -1,9 +1,8 @@
-// @ts-check
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { changedTopics, fingerprints } from '../src/changes.js';
-import { parseSubstitutions } from '../src/edupage.js';
-import { substitutionsHtml } from './helpers.js';
+import { changedTopics, fingerprints } from '../src/changes.ts';
+import { parseSubstitutions } from '../src/edupage.ts';
+import { substitutionsHtml } from './helpers.ts';
 
 const rows = parseSubstitutions(substitutionsHtml('2026-11-24'));
 

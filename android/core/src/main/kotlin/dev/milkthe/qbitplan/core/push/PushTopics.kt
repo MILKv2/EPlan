@@ -3,7 +3,7 @@ package dev.milkthe.qbitplan.core.push
 import java.text.Normalizer
 
 /**
- * FCM topics the worker (worker/src/topics.js) pushes to when a day's substitutions change.
+ * FCM topics the worker (worker/src/topics.ts) pushes to when a day's substitutions change.
  * Both sides are tested against fixtures/topics.json.
  */
 object PushTopics {

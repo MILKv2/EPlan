@@ -14,18 +14,18 @@ telefony, których plan się zmienił. Bez własnego serwera i bez bazy danych u
 5. Telefon pobiera ten dzień sam, porównuje swój plan przed i po (z grupami ucznia) i pokazuje
    powiadomienie z tym, co zmieniło się u niego. Jeśli nic, nie pokazuje niczego.
 
-Nazwy topików liczą tak samo worker (`src/topics.js`) i apka (`PushTopics.kt`); obie strony
+Nazwy topików liczą tak samo worker (`src/topics.ts`) i apka (`PushTopics.kt`); obie strony
 sprawdzają to na `../fixtures/topics.json`.
 
 ## Pliki
 
 ```
-src/index.js     cron: dni, porównanie z KV, wysyłka
-src/edupage.js   pobranie i parser zastępstw (port części SubstitutionsParser.kt)
-src/changes.js   skróty per topik i lista zmienionych topików
-src/topics.js    nazwy topików FCM
-src/fcm.js       FCM HTTP v1: JWT konta serwisowego → token → wiadomość
-src/calendar.js  daty po polsku (Europe/Warsaw), dni szkolne
+src/index.ts     cron: dni, porównanie z KV, wysyłka
+src/edupage.ts   pobranie i parser zastępstw (port części SubstitutionsParser.kt)
+src/changes.ts   skróty per topik i lista zmienionych topików
+src/topics.ts    nazwy topików FCM
+src/fcm.ts       FCM HTTP v1: JWT konta serwisowego → token → wiadomość
+src/calendar.ts  daty po polsku (Europe/Warsaw), dni szkolne
 test/            testy na ../fixtures (node --test)
 ```
 
@@ -33,7 +33,8 @@ test/            testy na ../fixtures (node --test)
 
 ```bash
 npm ci
-npm test                   # testy (Node 20+)
+npm run typecheck          # sprawdzenie typów (tsc)
+npm test                   # testy (Node 22.18+ uruchamia .ts bez budowania)
 npx wrangler deploy --dry-run
 ```
 
