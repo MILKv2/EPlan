@@ -1,11 +1,7 @@
 package dev.milkthe.qbitplan.crash
 
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,6 +28,7 @@ import dev.milkthe.qbitplan.data.prefs.ThemeMode
 import dev.milkthe.qbitplan.ui.common.ButtonVariant
 import dev.milkthe.qbitplan.ui.common.QbitButton
 import dev.milkthe.qbitplan.ui.common.StateMessage
+import dev.milkthe.qbitplan.ui.common.copyText
 import dev.milkthe.qbitplan.ui.theme.AppTheme
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 
@@ -45,7 +42,7 @@ class CrashActivity : ComponentActivity() {
         setContent {
             AppTheme(ThemeMode.SYSTEM) {
                 Surface(Modifier.fillMaxSize(), color = QbitTheme.colors.background) {
-                    CrashScreen(onRestart = ::restart, onCopy = { copy(details) })
+                    CrashScreen(onRestart = ::restart, onCopy = { copyText(details, R.string.crash_copied) })
                 }
             }
         }
@@ -56,11 +53,6 @@ class CrashActivity : ComponentActivity() {
         finish()
     }
 
-    private fun copy(details: String) {
-        getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText(getString(R.string.app_name), details))
-        // Android 13+ confirms copies itself.
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) Toast.makeText(this, R.string.crash_copied, Toast.LENGTH_SHORT).show()
-    }
 
     companion object {
         const val EXTRA_DETAILS = "details"
@@ -75,7 +67,7 @@ fun CrashScreen(onRestart: () -> Unit, onCopy: () -> Unit) {
                 icon = Icons.Outlined.ErrorOutline,
                 tone = QbitTheme.colors.danger,
                 title = stringResource(R.string.crash_title),
-                text = stringResource(R.string.crash_text),
+                text = stringResource(R.string.crash_text, stringResource(R.string.contact_discord)),
             )
         }
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {

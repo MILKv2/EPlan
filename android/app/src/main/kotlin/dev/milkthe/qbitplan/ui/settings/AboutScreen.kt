@@ -14,14 +14,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.outlined.BugReport
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SystemUpdate
-import androidx.compose.material.icons.automirrored.outlined.LibraryBooks
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -45,6 +48,7 @@ import dev.milkthe.qbitplan.ui.common.AppIcon
 import dev.milkthe.qbitplan.ui.common.BackHeader
 import dev.milkthe.qbitplan.ui.common.Chevron
 import dev.milkthe.qbitplan.ui.common.SettingsRow
+import dev.milkthe.qbitplan.ui.common.copyText
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 
 private const val AUTHOR_URL = "https://milkthe.dev"
@@ -71,6 +75,16 @@ fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit, vm: AboutViewModel =
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp).clip(RoundedCornerShape(16.dp)).background(colors.surfaceSecondary).padding(horizontal = 16.dp, vertical = 14.dp),
             )
             UpdateRow(update, onCheck = vm::checkNow, onDownload = { uri.openUri(it.apkUrl ?: it.pageUrl) })
+            val context = LocalContext.current
+            val discord = stringResource(R.string.contact_discord)
+            SettingsRow(
+                stringResource(R.string.about_report),
+                stringResource(R.string.about_report_value, discord),
+                onClick = { context.copyText(discord, R.string.about_report_copied) },
+                leading = { Icon(Icons.Outlined.BugReport, contentDescription = null, tint = colors.muted) },
+            ) {
+                Icon(Icons.Outlined.ContentCopy, contentDescription = null, tint = colors.muted, modifier = Modifier.size(18.dp))
+            }
             LinkRow(Icons.Outlined.Person, stringResource(R.string.about_author), stringResource(R.string.about_author_value)) { uri.openUri(AUTHOR_URL) }
             LinkRow(Icons.Outlined.Code, stringResource(R.string.about_source), stringResource(R.string.about_source_value)) { uri.openUri(REPO_URL) }
             LinkRow(Icons.Outlined.Description, stringResource(R.string.about_license), stringResource(R.string.about_license_value)) { uri.openUri(LICENSE_URL) }
