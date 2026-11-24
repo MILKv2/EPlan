@@ -31,7 +31,8 @@ Living list of what's left before the stable release. Remove this file during th
 - [x] Worker (`worker/`, JS + JSDoc): cron every 5 min, today + next 2 school days, per class/teacher hash in KV (write on change, TTL 3 days)
 - [x] FCM pushes (date only) to topics `klasa-<nazwa>` / `naucz-<imie-nazwisko>`; the app fetches the day and diffs its own plan
 - [x] App: subscribe to the profile's topic, respect notification toggle and weekend quiet mode
-- [ ] Worker setup in Cloudflare: KV namespace ID into `wrangler.toml`, Git import (root `worker`), secret `FCM_SERVICE_ACCOUNT`
+- [x] KV namespace ID in `wrangler.toml`
+- [ ] Worker setup in Cloudflare: Git import (root `worker`), secret `FCM_SERVICE_ACCOUNT`
 - [ ] Live test of pushes on the phone (debug build is a separate Firebase app `dev.milkthe.qbitplan.debug`)
 - [x] Crash screen ("Coś poszło nie tak") instead of the system dialog
 - [ ] Release signing (keystore + `keystore.properties`, outside git) and GitHub Releases workflow

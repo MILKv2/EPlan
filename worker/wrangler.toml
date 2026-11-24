@@ -9,7 +9,7 @@ crons = ["*/5 * * * *"]
 # Fingerprints of the watched days. Created in the Cloudflare dashboard (Workers & Pages → KV).
 [[kv_namespaces]]
 binding = "STATE"
-id = "00000000000000000000000000000000"
+id = "0427eecd0c9f4f29bd6134130c8a1afb"
 
 [observability]
 enabled = true
