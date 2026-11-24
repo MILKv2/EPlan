@@ -110,8 +110,9 @@ class OnboardingViewModelTest {
     fun `editing a teacher opens the name`() {
         runBlocking { prefs.setTeacher("-161", "AG", "Anna Grzebień") }
         val state = vm().await { it.selection != null }
-        assertEquals(NAME, state.selection!!.step)
-        assertEquals("Anna Grzebień", state.selection!!.fullName)
+        val sel = state.selection!!
+        assertEquals(NAME, sel.step)
+        assertEquals("Anna Grzebień", sel.fullName)
         assertEquals(listOf(ROLE, TEACHER, NAME), state.steps)
     }
 }

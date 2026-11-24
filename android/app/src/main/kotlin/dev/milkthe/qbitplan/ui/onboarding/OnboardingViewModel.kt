@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.milkthe.qbitplan.core.model.Timetable
+import dev.milkthe.qbitplan.core.model.normalizeName
 import dev.milkthe.qbitplan.core.schedule.knownTeacherNames
 import dev.milkthe.qbitplan.core.schedule.previousSchoolDays
+import dev.milkthe.qbitplan.core.schedule.shortFitsName
+import dev.milkthe.qbitplan.core.schedule.teacherIdsByName
 import dev.milkthe.qbitplan.core.schedule.upcomingSchoolDays
 import dev.milkthe.qbitplan.data.Profile
 import dev.milkthe.qbitplan.data.SchoolRepository
@@ -37,8 +40,9 @@ import javax.inject.Inject
 
 enum class OnboardingStep { ROLE, CLASS, GROUPS, TEACHER, NAME, NOTIFICATIONS }
 
+/** [keywords]: also matched by the search, not shown (a teacher's full name). */
 @Immutable
-data class Option(val id: String, val title: String, val subtitle: String? = null)
+data class Option(val id: String, val title: String, val subtitle: String? = null, val keywords: String = "")
 
 @Immutable
 data class Selection(
@@ -100,16 +104,20 @@ class OnboardingViewModel @Inject constructor(
     // Full names exist only in substitutions, so look at a few recent and upcoming days.
     private val nameDays: List<LocalDate> = LocalDate.now(clock).let { previousSchoolDays(it, 5) + upcomingSchoolDays(it, 2) }
 
-    private val names: Flow<List<String>> = combine(nameDays.map { repository.substitutions(it) }) { days ->
-        knownTeacherNames(days.filterNotNull().map { it.value })
-    }
+    /** [owners]: teacher id by normalized name, where substitutions tell whose name it is. */
+    private class Names(val all: List<String> = emptyList(), val owners: Map<String, String> = emptyMap())
 
-    private class Catalog(val timetable: Timetable, val classes: List<Option>, val teachers: List<Option>)
+    private val names: StateFlow<Names> = combine(repository.timetable, combine(nameDays.map { repository.substitutions(it) }) { it.toList() }) { tt, days ->
+        val loaded = days.filterNotNull().map { it.value }
+        Names(knownTeacherNames(loaded), tt?.value?.let { teacherIdsByName(it, loaded) }.orEmpty())
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Names())
 
-    // Built once per timetable version, not on every keystroke.
-    private val catalog: Flow<Catalog?> = repository.timetable
-        .map { tt -> tt?.value?.let { Catalog(it, classOptions(it), teacherOptions(it)) } }
-        .flowOn(Dispatchers.Default)
+    private class Catalog(val classes: List<Option>, val teachers: List<Option>)
+
+    // Built once per timetable version and name list, not on every keystroke.
+    private val catalog: Flow<Catalog?> = combine(repository.timetable, names) { tt, n ->
+        tt?.value?.let { Catalog(classOptions(it), teacherOptions(it, n)) }
+    }.flowOn(Dispatchers.Default)
 
     private val divisions: Flow<List<Division>> = combine(repository.timetable, selection.map { it?.classId }.distinctUntilChanged()) { tt, classId ->
         if (tt != null && classId != null) divisionsOf(tt.value, classId) else emptyList()
@@ -131,8 +139,10 @@ class OnboardingViewModel @Inject constructor(
             classCount = classes.size,
             classes = if (cq.isEmpty()) classes else classes.filter { cq in it.title.lowercase(PolishLocale) },
             divisions = divs,
-            teachers = if (tq.isEmpty()) teachers else teachers.filter { tq in it.title.lowercase(PolishLocale) || tq in it.subtitle.orEmpty().lowercase(PolishLocale) },
-            suggestedNames = suggestions(allNames, teachers.find { it.id == sel?.teacherId }?.title),
+            teachers = if (tq.isEmpty()) teachers else teachers.filter {
+                tq in it.title.lowercase(PolishLocale) || tq in it.subtitle.orEmpty().lowercase(PolishLocale) || tq in it.keywords
+            },
+            suggestedNames = suggestions(allNames, teachers.find { it.id == sel?.teacherId }),
         )
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OnboardingState())
 
@@ -196,7 +206,10 @@ class OnboardingViewModel @Inject constructor(
                     preferences.setStudent(cls.id, cls.short, sel.groups.values.filterNotNull().toSet())
                 }
                 UserMode.TEACHER -> {
-                    val teacher = sel.teacherId?.let { tt.teachers[it] } ?: return@launch
+                    // The name is the surer identity: two teachers can share a short.
+                    val teacher = names.value.owners[normalizeName(sel.fullName)]?.let { tt.teachers[it] }
+                        ?: sel.teacherId?.let { tt.teachers[it] }
+                        ?: return@launch
                     preferences.setTeacher(teacher.id, teacher.short, sel.fullName)
                 }
             }
@@ -249,20 +262,25 @@ class OnboardingViewModel @Inject constructor(
     private fun classOptions(tt: Timetable): List<Option> =
         tt.classes.values.sortedBy { it.short }.map { Option(it.id, it.short) }
 
-    /** Shorts aren't unique, so each option carries the main subject to tell them apart. */
-    private fun teacherOptions(tt: Timetable): List<Option> {
+    /** Shorts aren't unique, so duplicates carry the surname (or else the main subject) to tell them apart. */
+    private fun teacherOptions(tt: Timetable, names: Names): List<Option> {
+        val byKey = names.all.associateBy { normalizeName(it) }
+        val nameById = names.owners.entries.mapNotNull { (key, id) -> byKey[key]?.let { id to it } }.toMap()
         val duplicates = tt.teachers.values.groupingBy { it.short }.eachCount().filterValues { it > 1 }.keys
         return tt.teachers.values.map { teacher ->
-            val lessons = tt.lessonsForTeacher(teacher.id)
-            val subjects = lessons.mapNotNull { tt.subjects[it.subjectId]?.short }.byFrequency()
-            Option(teacher.id, teacher.short, if (teacher.short in duplicates) subjects.firstOrNull() else null)
+            val name = nameById[teacher.id]
+            val subtitle = if (teacher.short in duplicates) {
+                name?.substringAfterLast(' ') ?: tt.lessonsForTeacher(teacher.id).mapNotNull { tt.subjects[it.subjectId]?.short }.byFrequency().firstOrNull()
+            } else null
+            Option(teacher.id, teacher.short, subtitle, keywords = name?.lowercase(PolishLocale).orEmpty())
         }.sortedWith(compareBy({ it.title.lowercase(PolishLocale) }, { it.subtitle }))
     }
 
-    /** Names whose initials match the chosen short (e.g. "KW" ↔ Wojciech Książkiewicz). */
-    private fun suggestions(names: List<String>, short: String?): List<String> {
-        if (short == null) return emptyList()
-        val letters = short.filter { it.isUpperCase() }.toSet()
-        return names.filter { name -> name.split(' ', '-').mapNotNull { it.firstOrNull()?.uppercaseChar() }.toSet() == letters }.take(3)
+    /** Names known to be this teacher's first, then unclaimed names whose initials fit the short. */
+    private fun suggestions(names: Names, teacher: Option?): List<String> {
+        if (teacher == null) return emptyList()
+        val own = names.all.filter { names.owners[normalizeName(it)] == teacher.id }
+        val unclaimed = names.all.filter { normalizeName(it) !in names.owners && shortFitsName(teacher.title, it) }
+        return (own + unclaimed).take(3)
     }
 }

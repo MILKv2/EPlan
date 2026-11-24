@@ -1,6 +1,5 @@
 package dev.milkthe.qbitplan.ui.navigation
 
-import androidx.activity.BackEventCompat
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
@@ -160,9 +159,9 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
             },
             popEnterTransition = { poppedBack() },
             popExitTransition = { popOut() },
-            // The default shrinks the page; follow the finger like system apps instead.
-            predictivePopEnterTransition = { edge -> poppedBack(fromRight = edge == BackEventCompat.EDGE_RIGHT) },
-            predictivePopExitTransition = { edge -> popOut(towardsLeft = edge == BackEventCompat.EDGE_RIGHT) },
+            // The default shrinks the page; slide it away like a normal back, from either edge.
+            predictivePopEnterTransition = { poppedBack() },
+            predictivePopExitTransition = { popOut() },
         ) {
             screen<PlanRoute> { PlanScreen(onEditProfile = editProfile, onOpenSettings = { nav.openTab(SettingsRoute) }) }
             screen<SubstitutionsRoute> { SubstitutionsScreen() }
@@ -201,11 +200,9 @@ private fun pushIn(): EnterTransition = slideInHorizontally(SlideSpec) { w -> w 
 
 private fun pushedAway(): ExitTransition = slideOutHorizontally(SlideSpec) { w -> -w / 4 }
 
-private fun popOut(towardsLeft: Boolean = false): ExitTransition =
-    slideOutHorizontally(SlideSpec) { w -> if (towardsLeft) -w else w }
+private fun popOut(): ExitTransition = slideOutHorizontally(SlideSpec) { w -> w }
 
-private fun poppedBack(fromRight: Boolean = false): EnterTransition =
-    slideInHorizontally(SlideSpec) { w -> if (fromRight) w / 4 else -w / 4 }
+private fun poppedBack(): EnterTransition = slideInHorizontally(SlideSpec) { w -> -w / 4 }
 
 @Composable
 private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, onClick: () -> Unit, modifier: Modifier) {

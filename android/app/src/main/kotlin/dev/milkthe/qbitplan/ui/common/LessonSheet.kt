@@ -29,7 +29,7 @@ import dev.milkthe.qbitplan.core.schedule.LessonStatus
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 import dev.milkthe.qbitplan.ui.theme.style
 
-/** Everything a lesson tile has no room for: full names, old → new values, EduPage's own wording. */
+/** Everything a lesson tile has no room for: full names and old → new values. */
 @Composable
 fun LessonSheet(item: LessonItem, onDismiss: () -> Unit) {
     val colors = QbitTheme.colors
@@ -75,9 +75,6 @@ fun LessonSheet(item: LessonItem, onDismiss: () -> Unit) {
                     if (i > 0) Hairline()
                     DetailRow(label, value)
                 }
-            }
-            item.info?.let {
-                Text(stringResource(R.string.lesson_edupage, it), style = MaterialTheme.typography.bodySmall, color = colors.muted, modifier = Modifier.padding(horizontal = 4.dp))
             }
         }
     }
