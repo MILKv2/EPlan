@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.milkthe.qbitplan.crash.CrashScreen
 import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
@@ -186,6 +187,13 @@ class ScreensTest {
         show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync)) }
         waitForText("Ostatnia synchronizacja")
         capture("settings")
+    }
+
+    @Test
+    fun crash() {
+        show { CrashScreen(onRestart = {}, onCopy = {}) }
+        waitForText("Coś poszło nie tak")
+        capture("crash")
     }
 
     @Test

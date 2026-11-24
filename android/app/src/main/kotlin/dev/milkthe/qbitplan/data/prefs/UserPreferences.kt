@@ -23,6 +23,8 @@ data class UserPreferences(
     val quietWeekends: Boolean = true,
     /** Hide lessons of groups the student isn't in. */
     val onlyMyGroups: Boolean = true,
+    /** FCM topic this install is subscribed to; `null` = none. */
+    val pushTopic: String? = null,
 ) {
     val isOnboarded: Boolean
         get() = when (mode) {

@@ -46,6 +46,8 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setOnlyMyGroups(enabled: Boolean) = dataStore.edit { it[ONLY_MY_GROUPS] = enabled }
 
+    suspend fun setPushTopic(topic: String?) = dataStore.edit { if (topic == null) it.remove(PUSH_TOPIC) else it[PUSH_TOPIC] = topic }
+
     private fun Preferences.toUserPreferences() = UserPreferences(
         mode = this[MODE]?.let { name -> UserMode.entries.find { it.name == name } },
         classId = this[CLASS_ID],
@@ -58,6 +60,7 @@ class UserPreferencesRepository @Inject constructor(
         notificationsEnabled = this[NOTIFICATIONS] ?: false,
         quietWeekends = this[QUIET_WEEKENDS] ?: true,
         onlyMyGroups = this[ONLY_MY_GROUPS] ?: true,
+        pushTopic = this[PUSH_TOPIC],
     )
 
     private companion object {
@@ -72,5 +75,6 @@ class UserPreferencesRepository @Inject constructor(
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
         val QUIET_WEEKENDS = booleanPreferencesKey("quiet_weekends")
         val ONLY_MY_GROUPS = booleanPreferencesKey("only_my_groups")
+        val PUSH_TOPIC = stringPreferencesKey("push_topic")
     }
 }

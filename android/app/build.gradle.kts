@@ -8,6 +8,8 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
     alias(libs.plugins.room)
+    // Reads google-services.json (Firebase project "qbitplan"; release and .debug apps).
+    alias(libs.plugins.google.services)
 }
 
 // CI sets QBIT_VERSION_NAME from the tag (v1.2.3).
@@ -107,6 +109,9 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.androidx.datastore.preferences)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
     implementation(libs.kotlinx.coroutines.android)
 
     testImplementation(libs.junit)

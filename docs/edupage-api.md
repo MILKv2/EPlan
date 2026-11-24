@@ -193,7 +193,10 @@ z planem bieżącym (pkt 4) dla wszystkich klas.
    (`Moved from period: N`).
 
 Nauczyciela z zastępstw (pełne nazwisko) łączymy ze skrótem z planu przez
-parowanie ustawione przez użytkownika w onboardingu.
+parowanie ustawione przez użytkownika w onboardingu. Podpowiedzi biorą się z
+samych zastępstw: wiersz, w którym ktoś jest nauczycielem planowym, leży na
+lekcji z planu, a ta mówi, czyj to skrót (`teacherIdsByName`; liczą się tylko
+skróty pasujące do inicjałów, bo starsze dni mogą dotyczyć innej wersji planu).
 
 ## 4. Plan bieżący: `curentttGetData` (UI wyłączone, endpoint działa)
 
