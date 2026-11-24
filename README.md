@@ -54,9 +54,9 @@ przychodzą przez Firebase Cloud Messaging: telefon zapisuje się na kanał swoj
 
 ## Błędy i pomysły
 
-Coś się nie zgadza z planem albo apka się zamknęła? Zgłoś to w
-[**Issues**](../../issues). Przy awarii aplikacja pokazuje przycisk do skopiowania
-szczegółów błędu, wklej je do zgłoszenia.
+Coś się nie zgadza z planem albo apka się zamknęła? Napisz na Discordzie do **milkv2**
+albo zgłoś to w [**Issues**](../../issues). Przy awarii aplikacja pokazuje przycisk
+do skopiowania szczegółów błędu, wklej je do wiadomości.
 
 ---
 
