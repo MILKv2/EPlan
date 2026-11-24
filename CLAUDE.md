@@ -21,5 +21,5 @@ The owner does not write Kotlin; keep the code clean enough to be maintained by 
 
 ## Workflow
 - Stages are summarised to the owner; wait for "ok" before the next stage unless told otherwise.
-- The owner allows merging PRs once tests pass locally (CI on GitHub currently doesn't start: account-level `startup_failure`). Prefer squash merges.
+- The owner allows merging PRs once tests pass (CI `Tests` on the PR, or locally). Prefer squash merges.
 - Secrets never go to git (keystores, `keystore.properties`, `.dev.vars`, service-account keys).
