@@ -1,12 +1,19 @@
+@file:OptIn(ExperimentalLayoutApi::class)
+
 package dev.milkthe.qbitplan.ui.onboarding
 
 import dev.milkthe.qbitplan.ui.common.QbitTextField
 import android.Manifest
 import android.os.Build
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.PredictiveBackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.rememberTransition
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -24,12 +31,15 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,7 +50,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
@@ -59,12 +68,16 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -87,40 +100,66 @@ import dev.milkthe.qbitplan.ui.common.StateMessage
 import dev.milkthe.qbitplan.ui.common.surface
 import dev.milkthe.qbitplan.ui.search.GridTile
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
+import kotlinx.coroutines.CancellationException
 
 /** Visual order of the steps; drives the slide direction. */
 private val OnboardingStep.order: Int
     get() = when (this) {
         OnboardingStep.ROLE -> 0
         OnboardingStep.CLASS, OnboardingStep.TEACHER -> 1
-        OnboardingStep.GROUPS -> 2
+        OnboardingStep.GROUPS, OnboardingStep.NAME -> 2
         OnboardingStep.NOTIFICATIONS -> 3
     }
 
+/**
+ * [onClose]: leave the profile editor (saved, or back from its first step). The first-run
+ * onboarding never closes itself; the app switches to the plan once the profile is saved.
+ */
 @Composable
-fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
+fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel(), onClose: () -> Unit = {}) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val sel = state.selection
-    val context = LocalContext.current
-    // Checked on each composition so a permission granted in system settings is picked up.
-    val notificationsAllowed = NotificationManagerCompat.from(context).areNotificationsEnabled()
-    val next = { vm.next(notificationsAllowed) }
-    BackHandler(enabled = sel.step != OnboardingStep.ROLE) { vm.back() }
+    // Checked on each composition so a permission granted in system settings is picked up;
+    // passed on while the profile is still loading so the step counter doesn't jump.
+    val notificationsAllowed = NotificationManagerCompat.from(LocalContext.current).areNotificationsEnabled()
+    LaunchedEffect(notificationsAllowed) { vm.setNotificationsAllowed(notificationsAllowed) }
+    LaunchedEffect(state.finished) { if (state.finished) onClose() }
+    val sel = state.selection ?: return
+
+    val steps = remember { SeekableTransitionState(sel.step) }
+    LaunchedEffect(sel.step) { steps.animateTo(sel.step) }
+    val previous = state.previousStep
+    PredictiveBackHandler(enabled = previous != null) { events ->
+        val target = previous ?: return@PredictiveBackHandler
+        try {
+            events.collect { steps.seekTo(it.progress, targetState = target) }
+            vm.back()
+        } catch (_: CancellationException) {
+            steps.animateTo(sel.step)
+        }
+    }
+    val focus = LocalFocusManager.current
 
     Column(Modifier.fillMaxSize().safeDrawingPadding().imePadding()) {
-        ProgressBar(sel.step, total = if (notificationsAllowed) 2 else 3, showBack = sel.step != OnboardingStep.ROLE, onBack = { vm.back() })
-        AnimatedContent(
-            targetState = sel.step,
+        ProgressBar(
+            current = state.stepNumber,
+            total = state.steps.size,
+            showBack = previous != null || sel.editing,
+            onBack = { if (!vm.back()) onClose() },
+        )
+        rememberTransition(steps, label = "onboardingStep").AnimatedContent(
             transitionSpec = {
                 val forward = targetState.order > initialState.order
                 val spec = tween<IntOffset>(280, easing = FastOutSlowInEasing)
                 (slideInHorizontally(spec) { w -> if (forward) w / 3 else -w / 3 } + fadeIn(tween(200, delayMillis = 60)))
                     .togetherWith(slideOutHorizontally(spec) { w -> if (forward) -w / 3 else w / 3 } + fadeOut(tween(120)))
             },
-            label = "onboardingStep",
             modifier = Modifier.weight(1f),
         ) { step ->
             Column(Modifier.fillMaxSize()) {
+                val next = {
+                    focus.clearFocus()
+                    vm.next()
+                }
                 when {
                     step == OnboardingStep.ROLE -> RoleStep(sel.mode, vm::chooseMode, next)
                     !state.hasTimetable && !state.failed -> LoadingBox()
@@ -129,10 +168,11 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
                             QbitButton(stringResource(R.string.retry), vm::retry)
                         }
                     }
-                    step == OnboardingStep.CLASS -> ClassStep(state, vm, next)
-                    step == OnboardingStep.GROUPS -> GroupsStep(state, vm, next)
-                    step == OnboardingStep.TEACHER -> TeacherStep(state, vm, next)
-                    step == OnboardingStep.NOTIFICATIONS -> NotificationsStep(state, vm)
+                    step == OnboardingStep.CLASS -> ClassStep(state, sel, vm, next)
+                    step == OnboardingStep.GROUPS -> GroupsStep(state, sel, vm, next)
+                    step == OnboardingStep.TEACHER -> TeacherStep(state, sel, vm, next)
+                    step == OnboardingStep.NAME -> NameStep(state, sel, vm, next)
+                    step == OnboardingStep.NOTIFICATIONS -> NotificationsStep(state, sel, vm)
                 }
             }
         }
@@ -140,9 +180,8 @@ fun OnboardingScreen(vm: OnboardingViewModel = hiltViewModel()) {
 }
 
 @Composable
-private fun ProgressBar(step: OnboardingStep, total: Int, showBack: Boolean, onBack: () -> Unit) {
+private fun ProgressBar(current: Int, total: Int, showBack: Boolean, onBack: () -> Unit) {
     val colors = QbitTheme.colors
-    val current = minOf(step.number, total)
     Row(
         Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -151,25 +190,47 @@ private fun ProgressBar(step: OnboardingStep, total: Int, showBack: Boolean, onB
         if (showBack) RoundIconButton(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back), onBack) else Spacer(Modifier.size(48.dp))
         Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             (1..total).forEach { i ->
-                val fill by animateColorAsState(if (i <= current) colors.accent.solid else colors.default, label = "progress")
-                Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(fill))
+                key(i) {
+                    val fill by animateColorAsState(if (i <= current) colors.accent.solid else colors.default, label = "progress")
+                    Box(Modifier.weight(1f).height(4.dp).clip(CircleShape).background(fill))
+                }
             }
         }
         Text(stringResource(R.string.onboarding_step, current, total), fontSize = 13.sp, color = colors.muted, style = MaterialTheme.typography.bodySmall, modifier = Modifier.width(40.dp))
     }
 }
 
+/** Primary button of a step: "Dalej", or "Zapisz" on the last step of the profile editor. */
+@Composable
+private fun nextLabel(state: OnboardingState, sel: Selection, chosen: String?): String = when {
+    sel.editing && state.isLastStep -> stringResource(R.string.save)
+    chosen != null -> stringResource(R.string.next_with, chosen)
+    else -> stringResource(R.string.next)
+}
+
+/** The description folds away while the keyboard is up so lists keep their room. */
 @Composable
 private fun Heading(title: String, text: String) {
-    Column(Modifier.padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    val keyboard = WindowInsets.isImeVisible
+    Column(Modifier.padding(start = 24.dp, end = 24.dp, top = if (keyboard) 4.dp else 16.dp, bottom = if (keyboard) 12.dp else 20.dp)) {
         Text(title, style = MaterialTheme.typography.headlineMedium)
-        Text(text, fontSize = 15.sp, lineHeight = 22.sp, color = QbitTheme.colors.muted, style = MaterialTheme.typography.bodyLarge)
+        AnimatedVisibility(!keyboard) {
+            Text(text, fontSize = 15.sp, lineHeight = 22.sp, color = QbitTheme.colors.muted, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
+        }
     }
 }
 
 @Composable
 private fun ColumnScope.Footer(content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 24.dp), verticalArrangement = Arrangement.spacedBy(6.dp), content = content)
+}
+
+/** For search steps: while typing the list gets the room; picking a tile closes the keyboard and brings the button back. */
+@Composable
+private fun ColumnScope.KeyboardHiddenFooter(content: @Composable ColumnScope.() -> Unit) {
+    AnimatedVisibility(!WindowInsets.isImeVisible, enter = expandVertically(), exit = shrinkVertically()) {
+        Footer(content)
+    }
 }
 
 @Composable
@@ -219,9 +280,10 @@ private fun RoleCard(icon: ImageVector, title: String, description: String, sele
 }
 
 @Composable
-private fun ColumnScope.ClassStep(state: OnboardingState, vm: OnboardingViewModel, onNext: () -> Unit) {
+private fun ColumnScope.ClassStep(state: OnboardingState, sel: Selection, vm: OnboardingViewModel, onNext: () -> Unit) {
+    val focus = LocalFocusManager.current
     Heading(stringResource(R.string.onboarding_class_title), stringResource(R.string.onboarding_class_text, state.classCount))
-    SearchField(state.selection.classQuery, vm::setClassQuery, stringResource(R.string.onboarding_class_search), Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp))
+    SearchField(sel.classQuery, vm::setClassQuery, stringResource(R.string.onboarding_class_search), Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp))
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
         modifier = Modifier.weight(1f),
@@ -230,21 +292,24 @@ private fun ColumnScope.ClassStep(state: OnboardingState, vm: OnboardingViewMode
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(state.classes, key = { it.id }) { option ->
-            GridTile(option.title, highlighted = false, selected = option.id == state.selection.classId) { vm.chooseClass(option.id) }
+            GridTile(option.title, highlighted = false, selected = option.id == sel.classId) {
+                focus.clearFocus()
+                vm.chooseClass(option.id)
+            }
         }
     }
-    Footer {
+    KeyboardHiddenFooter {
         QbitButton(
-            text = state.className?.let { stringResource(R.string.next_with, it) } ?: stringResource(R.string.next),
+            text = nextLabel(state, sel, state.className),
             onClick = onNext,
-            enabled = state.selection.classId != null,
+            enabled = sel.classId != null,
             modifier = Modifier.fillMaxWidth(),
         )
     }
 }
 
 @Composable
-private fun ColumnScope.GroupsStep(state: OnboardingState, vm: OnboardingViewModel, onNext: () -> Unit) {
+private fun ColumnScope.GroupsStep(state: OnboardingState, sel: Selection, vm: OnboardingViewModel, onNext: () -> Unit) {
     Heading(stringResource(R.string.onboarding_groups_title), stringResource(R.string.onboarding_groups_text))
     Column(
         Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
@@ -254,7 +319,7 @@ private fun ColumnScope.GroupsStep(state: OnboardingState, vm: OnboardingViewMod
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel(division.label?.let { stringResource(it) } ?: division.options.joinToString(" / "))
                 val options = division.options + stringResource(R.string.groups_all)
-                val current = state.selection.groups[division.id]
+                val current = sel.groups[division.id]
                 SegmentedControl(
                     options = options,
                     selected = current?.let { division.options.indexOf(it) } ?: division.options.size,
@@ -264,13 +329,12 @@ private fun ColumnScope.GroupsStep(state: OnboardingState, vm: OnboardingViewMod
             }
         }
     }
-    Footer { QbitButton(stringResource(R.string.next), onNext, Modifier.fillMaxWidth()) }
+    Footer { QbitButton(nextLabel(state, sel, chosen = null), onNext, Modifier.fillMaxWidth()) }
 }
 
 @Composable
-private fun ColumnScope.TeacherStep(state: OnboardingState, vm: OnboardingViewModel, onNext: () -> Unit) {
-    val colors = QbitTheme.colors
-    val sel = state.selection
+private fun ColumnScope.TeacherStep(state: OnboardingState, sel: Selection, vm: OnboardingViewModel, onNext: () -> Unit) {
+    val focus = LocalFocusManager.current
     Heading(stringResource(R.string.onboarding_teacher_title), stringResource(R.string.onboarding_teacher_text))
     SearchField(sel.teacherQuery, vm::setTeacherQuery, stringResource(R.string.onboarding_teacher_search), Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp))
     LazyVerticalGrid(
@@ -281,27 +345,39 @@ private fun ColumnScope.TeacherStep(state: OnboardingState, vm: OnboardingViewMo
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         items(state.teachers, key = { it.id }) { option ->
-            GridTile(option.title, highlighted = false, selected = option.id == sel.teacherId, subtitle = option.subtitle) { vm.chooseTeacher(option.id) }
-        }
-        if (sel.teacherId != null) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "name-title") {
-                SectionLabel(stringResource(R.string.onboarding_name_title), Modifier.padding(top = 10.dp))
-            }
-            item(span = { GridItemSpan(maxLineSpan) }, key = "names") {
-                Column(Modifier.fillMaxWidth().surface(RoundedCornerShape(QbitTheme.radius.card))) {
-                    state.suggestedNames.forEachIndexed { i, name ->
-                        if (i > 0) Hairline()
-                        NameOption(name, stringResource(R.string.onboarding_name_matches, state.teacherShort.orEmpty()), sel.pickedName == name) { vm.pickName(name) }
-                    }
-                    if (state.suggestedNames.isNotEmpty()) Hairline()
-                    NameOption(stringResource(R.string.onboarding_name_manual), stringResource(R.string.onboarding_name_manual_desc), sel.pickedName == null) { vm.pickName(null) }
-                }
+            GridTile(option.title, highlighted = false, selected = option.id == sel.teacherId, subtitle = option.subtitle) {
+                focus.clearFocus()
+                vm.chooseTeacher(option.id)
             }
         }
     }
+    KeyboardHiddenFooter {
+        QbitButton(
+            text = nextLabel(state, sel, state.teacherShort),
+            onClick = onNext,
+            enabled = sel.teacherId != null,
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+
+@Composable
+private fun ColumnScope.NameStep(state: OnboardingState, sel: Selection, vm: OnboardingViewModel, onNext: () -> Unit) {
+    val colors = QbitTheme.colors
+    Heading(stringResource(R.string.onboarding_name_title), stringResource(R.string.onboarding_name_text, state.teacherShort.orEmpty()))
+    Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
+        Column(Modifier.fillMaxWidth().surface(RoundedCornerShape(QbitTheme.radius.card))) {
+            state.suggestedNames.forEachIndexed { i, name ->
+                if (i > 0) Hairline()
+                NameOption(name, stringResource(R.string.onboarding_name_matches, state.teacherShort.orEmpty()), sel.pickedName == name) { vm.pickName(name) }
+            }
+            if (state.suggestedNames.isNotEmpty()) Hairline()
+            NameOption(stringResource(R.string.onboarding_name_manual), stringResource(R.string.onboarding_name_manual_desc), sel.pickedName == null) { vm.pickName(null) }
+        }
+    }
     Footer {
-        // Kept above the button rather than in the grid so the keyboard never covers it.
-        if (sel.teacherId != null && sel.pickedName == null) {
+        // Kept above the button rather than in the list so the keyboard never covers it.
+        if (sel.pickedName == null) {
             Box(
                 Modifier.fillMaxWidth().padding(bottom = 6.dp).height(48.dp).surface(RoundedCornerShape(QbitTheme.radius.field)).padding(horizontal = 14.dp),
                 contentAlignment = Alignment.CenterStart,
@@ -316,9 +392,9 @@ private fun ColumnScope.TeacherStep(state: OnboardingState, vm: OnboardingViewMo
             }
         }
         QbitButton(
-            text = state.teacherShort?.let { stringResource(R.string.next_with, it) } ?: stringResource(R.string.next),
+            text = nextLabel(state, sel, chosen = null),
             onClick = onNext,
-            enabled = sel.teacherId != null && sel.fullName.isNotBlank(),
+            enabled = sel.fullName.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         )
     }
@@ -340,7 +416,7 @@ private fun NameOption(title: String, subtitle: String, selected: Boolean, onCli
 }
 
 @Composable
-private fun ColumnScope.NotificationsStep(state: OnboardingState, vm: OnboardingViewModel) {
+private fun ColumnScope.NotificationsStep(state: OnboardingState, sel: Selection, vm: OnboardingViewModel) {
     val colors = QbitTheme.colors
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted -> vm.finish(granted) }
     Box(Modifier.fillMaxWidth().padding(top = 24.dp), contentAlignment = Alignment.Center) {
@@ -359,7 +435,7 @@ private fun ColumnScope.NotificationsStep(state: OnboardingState, vm: Onboarding
             }
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.onboarding_notif_app), fontSize = 12.sp, color = colors.muted, style = MaterialTheme.typography.bodySmall)
-                val teacher = state.selection.mode == UserMode.TEACHER
+                val teacher = sel.mode == UserMode.TEACHER
                 Text(
                     if (teacher) stringResource(R.string.onboarding_notif_sample_teacher_title)
                     else stringResource(R.string.onboarding_notif_sample_title, state.className.orEmpty()),

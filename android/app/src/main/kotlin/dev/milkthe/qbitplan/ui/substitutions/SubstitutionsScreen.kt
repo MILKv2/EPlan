@@ -241,6 +241,7 @@ private fun AbsentSection(state: SubstitutionsState, open: Boolean, onToggle: ()
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 52.dp)
+                .clip(RoundedCornerShape(QbitTheme.radius.tile))
                 .clickable(enabled = hasAbsent, onClick = onToggle)
                 .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically,

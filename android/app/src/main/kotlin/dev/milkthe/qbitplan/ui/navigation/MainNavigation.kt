@@ -1,16 +1,23 @@
 package dev.milkthe.qbitplan.ui.navigation
 
+import androidx.activity.BackEventCompat
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.ui.unit.IntOffset
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination
+import androidx.navigation.NavGraphBuilder
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -64,6 +71,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import dev.milkthe.qbitplan.R
 import dev.milkthe.qbitplan.ui.common.Hairline
+import dev.milkthe.qbitplan.ui.onboarding.OnboardingScreen
 import dev.milkthe.qbitplan.ui.plan.PlanScreen
 import dev.milkthe.qbitplan.ui.search.DetailScreen
 import dev.milkthe.qbitplan.ui.search.SearchScreen
@@ -81,6 +89,9 @@ import kotlin.reflect.KClass
 @Serializable data object SettingsRoute
 @Serializable data object AboutRoute
 @Serializable data object LicensesRoute
+
+/** Profile editor: the onboarding steps, opened on the last one. */
+@Serializable data object ProfileRoute
 
 /** [kind] is a `DetailKind` name. */
 @Serializable data class DetailRoute(val kind: String, val id: String)
@@ -111,60 +122,90 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
         containerColor = QbitTheme.colors.background,
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            Column(Modifier.background(QbitTheme.colors.surface)) {
-                Box(Modifier.fillMaxWidth().height(1.dp).background(QbitTheme.colors.border))
-                Row(Modifier.fillMaxWidth().navigationBarsPadding().height(80.dp).padding(horizontal = 8.dp)) {
-                    TopLevels.forEach { item ->
-                        val selected = destination?.hierarchy?.any { it.hasRoute(item.routeClass) } == true
-                        NavItem(
-                            item = item,
-                            selected = selected,
-                            badge = if (item.route == SubstitutionsRoute && badge > 0) badge else null,
-                            onClick = { nav.openTab(item.route) },
-                            modifier = Modifier.weight(1f),
-                        )
+            // The profile editor is full screen with its own button at the bottom, like the onboarding.
+            AnimatedVisibility(
+                visible = destination?.hasRoute(ProfileRoute::class) != true,
+                enter = expandVertically(expandFrom = Alignment.Top),
+                exit = shrinkVertically(shrinkTowards = Alignment.Top),
+            ) {
+                Column(Modifier.background(QbitTheme.colors.surface)) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(QbitTheme.colors.border))
+                    Row(Modifier.fillMaxWidth().navigationBarsPadding().height(80.dp).padding(horizontal = 8.dp)) {
+                        TopLevels.forEach { item ->
+                            val selected = destination?.hierarchy?.any { it.hasRoute(item.routeClass) } == true
+                            NavItem(
+                                item = item,
+                                selected = selected,
+                                badge = if (item.route == SubstitutionsRoute && badge > 0) badge else null,
+                                onClick = { nav.openTab(item.route) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                 }
             }
         },
     ) { padding ->
         val openDetail = { kind: dev.milkthe.qbitplan.ui.search.DetailKind, id: String -> nav.navigate(DetailRoute(kind.name, id)) }
+        val editProfile = { nav.navigate(ProfileRoute) { launchSingleTop = true } }
         NavHost(
             nav,
             startDestination = PlanRoute,
             modifier = Modifier.padding(padding),
-            enterTransition = { slideIn(towardsEnd = forward(initialState.destination, targetState.destination)) },
-            exitTransition = { slideOut(towardsEnd = forward(initialState.destination, targetState.destination)) },
-            popEnterTransition = { slideIn(towardsEnd = false) },
-            popExitTransition = { slideOut(towardsEnd = false) },
+            enterTransition = {
+                if (isTabSwitch()) tabIn(towardsEnd = forward(initialState.destination, targetState.destination)) else pushIn()
+            },
+            exitTransition = {
+                if (isTabSwitch()) tabOut(towardsEnd = forward(initialState.destination, targetState.destination)) else pushedAway()
+            },
+            popEnterTransition = { poppedBack() },
+            popExitTransition = { popOut() },
+            // The default shrinks the page; follow the finger like system apps instead.
+            predictivePopEnterTransition = { edge -> poppedBack(fromRight = edge == BackEventCompat.EDGE_RIGHT) },
+            predictivePopExitTransition = { edge -> popOut(towardsLeft = edge == BackEventCompat.EDGE_RIGHT) },
         ) {
-            composable<PlanRoute> { PlanScreen(onOpenProfile = { nav.openTab(SettingsRoute) }) }
-            composable<SubstitutionsRoute> { SubstitutionsScreen() }
-            composable<SearchRoute> { SearchScreen(onOpen = openDetail) }
-            composable<SettingsRoute> { SettingsScreen(onAbout = { nav.navigate(AboutRoute) }) }
-            composable<DetailRoute> { DetailScreen(onBack = { nav.popBackStack() }, onOpen = openDetail) }
-            composable<AboutRoute> { AboutScreen(onBack = { nav.popBackStack() }, onLicenses = { nav.navigate(LicensesRoute) }) }
-            composable<LicensesRoute> { LicensesScreen(onBack = { nav.popBackStack() }) }
+            screen<PlanRoute> { PlanScreen(onEditProfile = editProfile, onOpenSettings = { nav.openTab(SettingsRoute) }) }
+            screen<SubstitutionsRoute> { SubstitutionsScreen() }
+            screen<SearchRoute> { SearchScreen(onOpen = openDetail) }
+            screen<SettingsRoute> { SettingsScreen(onAbout = { nav.navigate(AboutRoute) }, onEditProfile = editProfile) }
+            screen<DetailRoute> { DetailScreen(onBack = { nav.popBackStack() }, onOpen = openDetail) }
+            screen<AboutRoute> { AboutScreen(onBack = { nav.popBackStack() }, onLicenses = { nav.navigate(LicensesRoute) }) }
+            screen<LicensesRoute> { LicensesScreen(onBack = { nav.popBackStack() }) }
+            screen<ProfileRoute> { OnboardingScreen(onClose = { nav.popBackStack() }) }
         }
     }
 }
 
+/** Opaque, so a screen sliding over another one hides it. */
+private inline fun <reified T : Any> NavGraphBuilder.screen(noinline content: @Composable () -> Unit) =
+    composable<T> { Box(Modifier.fillMaxSize().background(QbitTheme.colors.background)) { content() } }
+
 private fun NavDestination.tabIndex(): Int = TopLevels.indexOfFirst { hasRoute(it.routeClass) }
 
-/** Tabs slide by their position in the bar; anything opened on top slides in from the end. */
-private fun forward(from: NavDestination, to: NavDestination): Boolean {
-    val a = from.tabIndex()
-    val b = to.tabIndex()
-    return a < 0 || b < 0 || b > a
-}
+private fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(): Boolean =
+    initialState.destination.tabIndex() >= 0 && targetState.destination.tabIndex() >= 0
+
+/** Tabs slide by their position in the bar. */
+private fun forward(from: NavDestination, to: NavDestination): Boolean = to.tabIndex() > from.tabIndex()
 
 private val SlideSpec = tween<IntOffset>(300, easing = FastOutSlowInEasing)
 
-private fun slideIn(towardsEnd: Boolean): EnterTransition =
+private fun tabIn(towardsEnd: Boolean): EnterTransition =
     slideInHorizontally(SlideSpec) { w -> if (towardsEnd) w / 4 else -w / 4 } + fadeIn(tween(220, delayMillis = 60))
 
-private fun slideOut(towardsEnd: Boolean): ExitTransition =
+private fun tabOut(towardsEnd: Boolean): ExitTransition =
     slideOutHorizontally(SlideSpec) { w -> if (towardsEnd) -w / 4 else w / 4 } + fadeOut(tween(140))
+
+// Screens opened on top (detail, about) slide over the previous one, which drifts behind them.
+private fun pushIn(): EnterTransition = slideInHorizontally(SlideSpec) { w -> w }
+
+private fun pushedAway(): ExitTransition = slideOutHorizontally(SlideSpec) { w -> -w / 4 }
+
+private fun popOut(towardsLeft: Boolean = false): ExitTransition =
+    slideOutHorizontally(SlideSpec) { w -> if (towardsLeft) -w else w }
+
+private fun poppedBack(fromRight: Boolean = false): EnterTransition =
+    slideInHorizontally(SlideSpec) { w -> if (fromRight) w / 4 else -w / 4 }
 
 @Composable
 private fun NavItem(item: TopLevel, selected: Boolean, badge: Int?, onClick: () -> Unit, modifier: Modifier) {

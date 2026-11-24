@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
@@ -103,7 +105,7 @@ class ScreensTest {
     @Test
     fun planStudentLight() {
         student()
-        show { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_light")
     }
@@ -111,16 +113,26 @@ class ScreensTest {
     @Test
     fun planStudentDark() {
         student()
-        show(dark = true) { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_dark")
+    }
+
+    @Test
+    fun lessonSheet() {
+        student()
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        waitForText("Informatyka")
+        compose.onAllNodesWithText("Informatyka", substring = true).onFirst().performClick()
+        waitForText("W EduPage:")
+        waitForText("Podstawy elektrotechniki i elektroniki")
     }
 
     @Test
     fun planWeek() {
         student()
         val vm = PlanViewModel(repo, prefs, sync, clock).apply { toggleWeek() }
-        show { PlanScreen(onOpenProfile = {}, vm = vm) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = vm) }
         waitForText("Pt")
         capture("plan_week")
     }
@@ -128,7 +140,7 @@ class ScreensTest {
     @Test
     fun planTeacher() {
         teacher()
-        show { PlanScreen(onOpenProfile = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("1at")
         capture("plan_teacher")
     }
@@ -171,7 +183,7 @@ class ScreensTest {
     @Test
     fun settings() {
         student()
-        show { SettingsScreen(onAbout = {}, vm = SettingsViewModel(repo, prefs, sync)) }
+        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync)) }
         waitForText("Ostatnia synchronizacja")
         capture("settings")
     }
