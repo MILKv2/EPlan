@@ -100,3 +100,12 @@ test('without the FCM key nothing is recorded', async () => {
   await run(env, { now: NOW, fetchImpl: fakeNetwork().fetchImpl, log: quiet });
   assert.equal(env.STATE.puts, 0);
 });
+
+test('a broken FCM key is reported and nothing is recorded', async () => {
+  const env = { STATE: new MemoryKV(), FCM_SERVICE_ACCOUNT: '{ not json' };
+  /** @type {string[]} */
+  const errors = [];
+  await run(env, { now: NOW, fetchImpl: fakeNetwork().fetchImpl, log: { log() {}, error: (/** @type {string} */ m) => errors.push(m) } });
+  assert.equal(env.STATE.puts, 0);
+  assert.match(errors.join('\n'), /FCM_SERVICE_ACCOUNT is not a service account key file/);
+});

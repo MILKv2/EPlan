@@ -11,6 +11,28 @@
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const SCOPE = 'https://www.googleapis.com/auth/firebase.messaging';
 
+/**
+ * The FCM_SERVICE_ACCOUNT secret. Pasting the key file on a phone can turn the "\n" escapes in
+ * private_key into real line breaks, which JSON.parse rejects; the three fields are then read
+ * directly. Errors name the problem, never the secret's content.
+ * @param {string} raw
+ * @returns {ServiceAccount}
+ */
+export function parseServiceAccount(raw) {
+  /** @type {Partial<ServiceAccount>} */
+  let account;
+  try {
+    account = JSON.parse(raw);
+  } catch {
+    const field = (/** @type {string} */ name) => new RegExp(`"${name}"\\s*:\\s*"([^"]*)"`).exec(raw)?.[1];
+    account = { project_id: field('project_id'), client_email: field('client_email'), private_key: field('private_key') };
+  }
+  const missing = ['project_id', 'client_email', 'private_key'].filter((key) => !account[/** @type {keyof ServiceAccount} */ (key)]);
+  if (missing.length > 0) throw new Error(`FCM_SERVICE_ACCOUNT is not a service account key file (missing ${missing.join(', ')})`);
+  if (!account.private_key?.includes('PRIVATE KEY')) throw new Error('FCM_SERVICE_ACCOUNT: private_key is not a PEM key');
+  return /** @type {ServiceAccount} */ (account);
+}
+
 /** A condition may combine at most five topics. */
 export const TOPICS_PER_MESSAGE = 5;
 
@@ -84,7 +106,8 @@ export async function sendToTopics({ token, projectId, topics, data, collapseKey
 
 /** @param {string} pem */
 function pemToDer(pem) {
-  const base64 = pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  // Literal "\n" pairs remain when the key was read without JSON.parse.
+  const base64 = pem.replace(/-----[^-]+-----/g, '').replace(/\\n/g, '').replace(/\s+/g, '');
   return Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
 }
 

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { createVerify } from 'node:crypto';
 import { test } from 'node:test';
-import { accessToken, clearTokenCache, sendToTopics, signJwt } from '../src/fcm.js';
+import { accessToken, clearTokenCache, parseServiceAccount, sendToTopics, signJwt } from '../src/fcm.js';
 import { testAccount, testPublicKey as publicKey } from './helpers.js';
 
 /** @param {string} part */
@@ -48,4 +48,29 @@ test('one data message for up to five topics', async () => {
   assert.deepEqual(sent.body.message.data, { date: '2026-11-25' });
   assert.equal(sent.body.message.android.priority, 'HIGH');
   await assert.rejects(sendToTopics({ token: 't', projectId: 'p', topics: ['a', 'b', 'c', 'd', 'e', 'f'], data: {}, collapseKey: 'x' }, fetchImpl));
+});
+
+test('the key file parses as pasted, even with real line breaks inside private_key', async () => {
+  const file = JSON.stringify({ type: 'service_account', ...testAccount }, null, 2);
+  assert.deepEqual(parseServiceAccount(file).client_email, testAccount.client_email);
+
+  // A phone paste can turn the \\n escapes into line breaks: no longer JSON, still usable.
+  const mangled = file.replace(/\\n/g, '\n');
+  assert.throws(() => JSON.parse(mangled));
+  const account = parseServiceAccount(mangled);
+  assert.equal(account.project_id, testAccount.project_id);
+  const [header, claims, signature] = (await signJwt(account, 1_800_000_000)).split('.');
+  const verify = createVerify('RSA-SHA256');
+  verify.update(`${header}.${claims}`);
+  assert.ok(verify.verify(publicKey, Buffer.from(signature, 'base64url')));
+});
+
+test('a wrong secret is named, never echoed', () => {
+  assert.throws(() => parseServiceAccount('sk-not-a-key-file'), (error) => {
+    assert.ok(error instanceof Error);
+    assert.match(error.message, /missing project_id, client_email, private_key/);
+    assert.ok(!error.message.includes('sk-not-a-key-file'));
+    return true;
+  });
+  assert.throws(() => parseServiceAccount(JSON.stringify({ ...testAccount, private_key: 'abc' })), /not a PEM key/);
 });
