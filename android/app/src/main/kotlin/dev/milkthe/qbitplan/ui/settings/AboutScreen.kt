@@ -2,7 +2,6 @@ package dev.milkthe.qbitplan.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
@@ -43,6 +41,7 @@ import dev.milkthe.qbitplan.BuildConfig
 import dev.milkthe.qbitplan.R
 import dev.milkthe.qbitplan.core.update.AppRelease
 import dev.milkthe.qbitplan.data.UpdateStatus
+import dev.milkthe.qbitplan.ui.common.AppIcon
 import dev.milkthe.qbitplan.ui.common.BackHeader
 import dev.milkthe.qbitplan.ui.common.Chevron
 import dev.milkthe.qbitplan.ui.common.SettingsRow
@@ -61,9 +60,7 @@ fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit, vm: AboutViewModel =
         BackHeader(stringResource(R.string.settings_about), onBack)
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(bottom = 16.dp)) {
             Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.size(72.dp).clip(RoundedCornerShape(22.dp)).background(colors.accent.solid), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = colors.onAccent, modifier = Modifier.size(36.dp))
-                }
+                AppIcon(size = 72.dp, cornerRadius = 22.dp)
                 Spacer(Modifier.height(8.dp))
                 Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineSmall)
                 Text(stringResource(R.string.about_version, BuildConfig.VERSION_NAME), style = MaterialTheme.typography.bodyMedium, color = colors.muted)
