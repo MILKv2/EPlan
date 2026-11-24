@@ -17,7 +17,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +29,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
@@ -52,6 +56,20 @@ fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsV
     androidx.compose.foundation.layout.Column(
         Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(top = 8.dp, bottom = 16.dp),
     ) {
+        state.update?.let { release ->
+            val uri = LocalUriHandler.current
+            val download = { uri.openUri(release.apkUrl ?: release.pageUrl) }
+            SettingsHeader(stringResource(R.string.settings_update))
+            SettingsRow(
+                title = stringResource(R.string.update_available, release.version.toString()),
+                subtitle = stringResource(R.string.update_install_hint),
+                onClick = download,
+                leading = { Icon(Icons.Outlined.SystemUpdate, contentDescription = null, tint = colors.accent.softForeground) },
+            ) {
+                PillButton(stringResource(R.string.update_download), Icons.Outlined.Download, onClick = download, accent = true)
+            }
+        }
+
         SettingsHeader(stringResource(R.string.settings_profile))
         SettingsRow(
             title = stringResource(if (state.profile is Profile.TeacherProfile) R.string.mode_teacher else R.string.mode_student),
@@ -83,23 +101,7 @@ fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsV
             if (local.toLocalDate() == LocalDate.now()) stringResource(R.string.settings_today_at, local.toLocalTime().text()) else it.text()
         } ?: stringResource(R.string.settings_never_refreshed)
         SettingsRow(stringResource(R.string.settings_last_sync), stringResource(R.string.settings_last_sync_value, last)) {
-            Row(
-                Modifier
-                    .height(40.dp)
-                    .clip(CircleShape)
-                    .background(colors.default)
-                    .clickable(enabled = !state.sync.refreshing, role = Role.Button, onClick = vm::refresh)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                if (state.sync.refreshing) {
-                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = colors.foreground)
-                } else {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                }
-                Text(stringResource(R.string.refresh), style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
-            }
+            PillButton(stringResource(R.string.refresh), Icons.Outlined.Refresh, onClick = vm::refresh, loading = state.sync.refreshing)
         }
         if (state.sync.error != null && !state.sync.refreshing) {
             Text(
@@ -112,6 +114,29 @@ fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsV
 
         SettingsHeader(stringResource(R.string.settings_info))
         SettingsRow(stringResource(R.string.settings_about), stringResource(R.string.settings_about_desc), onClick = onAbout) { Chevron() }
+    }
+}
+
+@Composable
+private fun PillButton(text: String, icon: ImageVector, onClick: () -> Unit, loading: Boolean = false, accent: Boolean = false) {
+    val colors = QbitTheme.colors
+    val content = if (accent) colors.onAccent else colors.foreground
+    Row(
+        Modifier
+            .height(40.dp)
+            .clip(CircleShape)
+            .background(if (accent) colors.accent.solid else colors.default)
+            .clickable(enabled = !loading, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        if (loading) {
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = content)
+        } else {
+            Icon(icon, contentDescription = null, tint = content, modifier = Modifier.size(18.dp))
+        }
+        Text(text, style = MaterialTheme.typography.bodyMedium, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold, color = content)
     }
 }
 

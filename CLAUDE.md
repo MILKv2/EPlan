@@ -1,6 +1,7 @@
-# QbitPlan – project rules
+# EPlan – project rules
 
-Unofficial Android timetable + substitutions app for elektryk.edupage.org (GPL-3.0).
+E-Plan: unofficial Android timetable + substitutions app for elektryk.edupage.org (GPL-3.0).
+Repo `MILKv2/EPlan`; the package and applicationId stay `dev.milkthe.qbitplan` (Firebase apps, installed copies), as do the worker name and KV namespace `qbitplan`.
 The owner does not write Kotlin; keep the code clean enough to be maintained by tools and reviewers.
 
 ## Code
@@ -20,5 +21,5 @@ The owner does not write Kotlin; keep the code clean enough to be maintained by 
 
 ## Workflow
 - Stages are summarised to the owner; wait for "ok" before the next stage unless told otherwise.
-- The owner allows merging PRs once tests pass locally (CI on GitHub currently doesn't start: account-level `startup_failure`). Prefer squash merges.
+- The owner allows merging PRs once tests pass (CI `Tests` on the PR, or locally). Prefer squash merges.
 - Secrets never go to git (keystores, `keystore.properties`, `.dev.vars`, service-account keys).

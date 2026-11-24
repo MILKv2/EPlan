@@ -2,7 +2,6 @@
 
 package dev.milkthe.qbitplan.ui.onboarding
 
-import dev.milkthe.qbitplan.ui.common.QbitTextField
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.PredictiveBackHandler
@@ -10,41 +9,36 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.SeekableTransitionState
-import androidx.compose.animation.core.rememberTransition
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.SeekableTransitionState
+import androidx.compose.animation.core.rememberTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.unit.IntOffset
-import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -55,11 +49,11 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Person
@@ -77,20 +71,26 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationManagerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.milkthe.qbitplan.R
 import dev.milkthe.qbitplan.data.prefs.UserMode
+import dev.milkthe.qbitplan.ui.common.AppIcon
 import dev.milkthe.qbitplan.ui.common.ButtonVariant
 import dev.milkthe.qbitplan.ui.common.Hairline
 import dev.milkthe.qbitplan.ui.common.LoadingBox
 import dev.milkthe.qbitplan.ui.common.QbitButton
+import dev.milkthe.qbitplan.ui.common.QbitTextField
 import dev.milkthe.qbitplan.ui.common.RadioDot
 import dev.milkthe.qbitplan.ui.common.RoundIconButton
 import dev.milkthe.qbitplan.ui.common.SearchField
@@ -430,9 +430,7 @@ private fun ColumnScope.NotificationsStep(state: OnboardingState, sel: Selection
             Modifier.fillMaxWidth().surface(RoundedCornerShape(24.dp)).padding(horizontal = 16.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(colors.accent.solid), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.CalendarMonth, contentDescription = null, tint = colors.onAccent, modifier = Modifier.size(20.dp))
-            }
+            AppIcon(size = 36.dp, cornerRadius = 12.dp)
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.onboarding_notif_app), fontSize = 12.sp, color = colors.muted, style = MaterialTheme.typography.bodySmall)
                 val teacher = sel.mode == UserMode.TEACHER

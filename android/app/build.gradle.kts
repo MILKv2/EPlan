@@ -12,13 +12,15 @@ plugins {
     alias(libs.plugins.google.services)
 }
 
-// CI sets QBIT_VERSION_NAME from the tag (v1.2.3).
-val appVersionName: String = System.getenv("QBIT_VERSION_NAME")?.removePrefix("v") ?: "1.0.0"
+// Single source of the app version; CI tags the release from the same file.
+val appVersionName: String = Properties().apply {
+    rootProject.file("version.properties").inputStream().use { load(it) }
+}.getProperty("versionName") ?: error("version.properties: missing versionName")
 
 // 1.2.3 → 10203
-val appVersionCode: Int = Regex("""^(\d+)\.(\d+)\.(\d+)""").find(appVersionName)
+val appVersionCode: Int = Regex("""^(\d+)\.(\d{1,2})\.(\d{1,2})$""").matchEntire(appVersionName)
     ?.destructured?.let { (major, minor, patch) -> major.toInt() * 10000 + minor.toInt() * 100 + patch.toInt() }
-    ?: 1
+    ?: error("version.properties: versionName must be MAJOR.MINOR.PATCH (minor and patch below 100), got '$appVersionName'")
 
 // Release signing comes from env vars (CI) or keystore.properties (local); both stay out of git.
 val keystoreProps = Properties().apply {

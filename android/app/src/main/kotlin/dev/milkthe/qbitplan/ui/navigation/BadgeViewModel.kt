@@ -7,6 +7,7 @@ import dev.milkthe.qbitplan.core.schedule.DayPlanner
 import dev.milkthe.qbitplan.core.schedule.LessonStatus
 import dev.milkthe.qbitplan.data.Profile
 import dev.milkthe.qbitplan.data.SchoolRepository
+import dev.milkthe.qbitplan.data.UpdateRepository
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.data.resolve
 import kotlinx.coroutines.Dispatchers
@@ -14,17 +15,19 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.Clock
 import java.time.LocalDate
 import javax.inject.Inject
 
-/** Number of the user's lessons that change today: the badge on the Zastępstwa tab. */
+/** Tab badges: today's changes on Zastępstwa, a dot on Ustawienia when an update is out. */
 @HiltViewModel
 class BadgeViewModel @Inject constructor(
     repository: SchoolRepository,
     preferences: UserPreferencesRepository,
     clock: Clock,
+    updates: UpdateRepository,
 ) : ViewModel() {
 
     private val today = LocalDate.now(clock)
@@ -43,4 +46,8 @@ class BadgeViewModel @Inject constructor(
         }
         lessons.count { it.status != LessonStatus.NORMAL }
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val updateAvailable: StateFlow<Boolean> = updates.available
+        .map { it != null }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 }

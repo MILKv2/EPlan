@@ -29,7 +29,7 @@ const TEACHER_LABELS = new Set(['zastępstwa', 'zastępstwo', 'substitution', 's
 export async function fetchSubstitutionsHtml(date, fetchImpl = fetch) {
   const response = await fetchImpl(`${BASE_URL}/substitution/server/viewer.js?__func=getSubstViewerDayDataHtml`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json; charset=UTF-8', 'User-Agent': 'QbitPlan-worker (nieoficjalna apka)' },
+    headers: { 'Content-Type': 'application/json; charset=UTF-8', 'User-Agent': 'E-Plan-worker (nieoficjalna apka)' },
     // __gsh is required; "00000000" is what the public page uses.
     body: JSON.stringify({ __args: [null, { date, mode: 'classes' }], __gsh: '00000000' }),
   });

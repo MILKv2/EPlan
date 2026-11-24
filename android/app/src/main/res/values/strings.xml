@@ -171,6 +171,16 @@
     <string name="about_license_value">GPL-3.0</string>
     <string name="about_oss_licenses">Licencje open source</string>
     <string name="about_oss_desc">Biblioteki użyte w aplikacji</string>
+    <string name="about_updates">Aktualizacje</string>
+    <string name="about_update_never">Dotknij, aby sprawdzić</string>
+    <string name="about_update_checking">Sprawdzam…</string>
+    <string name="about_update_latest">Masz najnowszą wersję</string>
+    <string name="about_update_available">Dostępna wersja %1$s · dotknij, aby pobrać</string>
+    <string name="about_update_failed">Nie udało się sprawdzić · dotknij, aby spróbować ponownie</string>
+    <string name="settings_update">Aktualizacja</string>
+    <string name="update_available">Nowa wersja %1$s</string>
+    <string name="update_install_hint">Zainstaluj na obecną, profil i ustawienia zostaną</string>
+    <string name="update_download">Pobierz</string>
 
     <!-- Onboarding -->
     <string name="onboarding_step">%1$d z %2$d</string>

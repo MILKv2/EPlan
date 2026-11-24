@@ -10,8 +10,7 @@ Twój plan z naniesionymi zastępstwami, od razu po otwarciu, także bez interne
 </p>
 
 > **Nieoficjalna.** Aplikacja nie jest powiązana ze szkołą ani z firmą EduPage.
-> Pokazuje tylko to, co szkoła publikuje na [elektryk.edupage.org](https://elektryk.edupage.org)
-> bez logowania.
+> Pokazuje tylko to, co szkoła publikuje publicznie na EduPage, bez logowania.
 
 ## Co potrafi
 
@@ -42,8 +41,9 @@ Twój plan z naniesionymi zastępstwami, od razu po otwarciu, także bez interne
    plików na instalowanie aplikacji.
 3. Wybierz, czy jesteś uczniem, czy nauczycielem, ustaw klasę i grupy. Gotowe.
 
-Wymaga Androida 8.0 lub nowszego. Aplikacji nie ma w Sklepie Play. Nowe wersje instalujesz
-tak samo, na starą: profil i ustawienia zostają.
+Wymaga Androida 8.0 lub nowszego. Aplikacji nie ma w Sklepie Play. Gdy wyjdzie nowa wersja,
+na zakładce Ustawienia pojawi się kropka i przycisk „Pobierz”. Instalujesz ją tak samo,
+na starą: profil i ustawienia zostają.
 
 ## Prywatność
 

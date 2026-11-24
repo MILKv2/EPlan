@@ -1,13 +1,8 @@
 package dev.milkthe.qbitplan.ui.common
 
-import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
-import androidx.compose.foundation.text.input.rememberTextFieldState
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,6 +21,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -33,6 +29,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.rememberTextFieldState
+import androidx.compose.foundation.text.input.setTextAndPlaceCursorAtEnd
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -46,7 +45,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +57,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -519,4 +523,12 @@ fun QbitTextField(
         keyboardOptions = keyboardOptions,
         modifier = modifier,
     )
+}
+
+/** The launcher icon: its 108dp adaptive foreground, cropped to the visible middle two thirds. */
+@Composable
+fun AppIcon(size: Dp, cornerRadius: Dp, modifier: Modifier = Modifier) {
+    Box(modifier.size(size).clip(RoundedCornerShape(cornerRadius)).background(colorResource(R.color.ic_launcher_background)), contentAlignment = Alignment.Center) {
+        Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, modifier = Modifier.requiredSize(size * 1.5f))
+    }
 }
