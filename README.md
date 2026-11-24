@@ -2,6 +2,7 @@
 
 Plan lekcji i zastępstwa ze szkolnego EduPage na Androida.
 Twój plan z naniesionymi zastępstwami, od razu po otwarciu, także bez internetu.
+> (DISCLAIMER: Ta apka została w pełni zrobiona przez claude, i to repo w większości to slop, z takiej racji że nie widze sensu spędzania czasu nad czymś co tylko ulepsza wyświetlanie planu lekcji, jak sie znajdą fundusze to aplikacja będzie też dorobiona na IOS, i w niedalekiej przyszłości trafi też pewnie na play store jak mi sie zachce, a narazie jest tylko tutaj więc miłego używania)
 
 <p align="center">
   <img src="docs/screenshots/plan.png" width="240" alt="Plan ucznia na dziś z zastępstwem">
