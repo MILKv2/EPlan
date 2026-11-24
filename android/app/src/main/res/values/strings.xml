@@ -38,6 +38,14 @@
     <string name="tag_covering">zastępstwo</string>
     <string name="tag_minutes_left">jeszcze %1$d min</string>
     <string name="lesson_no_teacher">brak</string>
+    <string name="lesson_details">Szczegóły lekcji</string>
+    <string name="lesson_period">Lekcja</string>
+    <string name="lesson_class">Klasa</string>
+    <string name="lesson_group">Grupa</string>
+    <string name="lesson_room">Sala</string>
+    <string name="lesson_teacher">Nauczyciel</string>
+    <string name="lesson_note">Uwaga</string>
+    <string name="lesson_edupage">W EduPage: %1$s</string>
     <string name="note_moved_from">z lekcji %1$d</string>
     <string name="note_moved_to">na lekcję %1$d</string>
     <string name="note_covering">za %1$s</string>

@@ -26,6 +26,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -159,6 +161,8 @@ fun Timeline(items: List<LessonItem>, isToday: Boolean, modifier: Modifier = Mod
     val nowMin = now?.let { it.hour * 60 + it.minute }
 
     val layout = remember(timed) { layoutBlocks(timed) }
+    var opened by remember { mutableStateOf<LessonItem?>(null) }
+    opened?.let { LessonSheet(it, onDismiss = { opened = null }) }
     val firstStart = timed.minOf { it.start!!.minutes() }
     val t0 = firstStart - 15
     var end = timed.maxOf { it.end!!.minutes() } + 25
@@ -199,6 +203,9 @@ fun Timeline(items: List<LessonItem>, isToday: Boolean, modifier: Modifier = Mod
                 item = item,
                 minutesLeft = if (isNow) stop - nowMin else null,
                 compact = placed.columns > 1,
+                // A block of two periods or more has room for a second title line.
+                titleLines = if (stop - start >= 80) 2 else 1,
+                onClick = { opened = item },
                 modifier = Modifier
                     .offset(x = BLOCKS_START + width * placed.column, y = topOf(start) + 1.dp)
                     .width(width - if (placed.column < placed.columns - 1) 4.dp else 0.dp)
@@ -275,7 +282,7 @@ fun Modifier.striped(stripe: Color, base: Color): Modifier = drawBehind {
 }
 
 @Composable
-private fun LessonBlock(item: LessonItem, minutesLeft: Int?, compact: Boolean, modifier: Modifier) {
+private fun LessonBlock(item: LessonItem, minutesLeft: Int?, compact: Boolean, titleLines: Int, onClick: () -> Unit, modifier: Modifier) {
     val colors = QbitTheme.colors
     val style = item.status.style()
     val shape = RoundedCornerShape(QbitTheme.radius.tile)
@@ -285,10 +292,10 @@ private fun LessonBlock(item: LessonItem, minutesLeft: Int?, compact: Boolean, m
     } else {
         modifier.surface(shape)
     }
-    Row(base) {
+    Row(base.clickable(role = Role.Button, onClickLabel = stringResource(R.string.lesson_details), onClick = onClick)) {
         style.bar?.let { Box(Modifier.width(4.dp).fillMaxHeight().background(it)) }
         if (compact) {
-            CompactBlockContent(item, fg, style.struck)
+            CompactBlockContent(item, fg, style.struck, titleLines)
             return@Row
         }
         Column(
@@ -306,7 +313,7 @@ private fun LessonBlock(item: LessonItem, minutesLeft: Int?, compact: Boolean, m
                     style = MaterialTheme.typography.titleSmall,
                     color = fg,
                     textDecoration = if (style.struck) TextDecoration.LineThrough else null,
-                    maxLines = 1,
+                    maxLines = titleLines,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = true),
                 )
@@ -376,7 +383,7 @@ fun noteText(note: LessonNote): String = when (note) {
 
 /** Side-by-side group lessons: short subject, room and one detail line, so narrow columns stay readable. */
 @Composable
-private fun RowScope.CompactBlockContent(item: LessonItem, fg: Color, struck: Boolean) {
+private fun RowScope.CompactBlockContent(item: LessonItem, fg: Color, struck: Boolean, titleLines: Int) {
     val colors = QbitTheme.colors
     Column(
         Modifier.weight(1f).fillMaxHeight().padding(horizontal = 10.dp, vertical = 6.dp),
@@ -389,7 +396,7 @@ private fun RowScope.CompactBlockContent(item: LessonItem, fg: Color, struck: Bo
                 style = MaterialTheme.typography.titleSmall,
                 color = fg,
                 textDecoration = if (struck) TextDecoration.LineThrough else null,
-                maxLines = 1,
+                maxLines = titleLines,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
             )

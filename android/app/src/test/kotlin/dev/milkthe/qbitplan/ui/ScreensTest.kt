@@ -5,6 +5,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
@@ -114,6 +116,16 @@ class ScreensTest {
         show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_dark")
+    }
+
+    @Test
+    fun lessonSheet() {
+        student()
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, clock)) }
+        waitForText("Informatyka")
+        compose.onAllNodesWithText("Informatyka", substring = true).onFirst().performClick()
+        waitForText("W EduPage:")
+        waitForText("Podstawy elektrotechniki i elektroniki")
     }
 
     @Test

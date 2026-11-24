@@ -11,7 +11,7 @@ Living list of what's left before the stable release. Remove this file during th
 - [x] Onboarding: teacher name field was cut off under the keyboard
 - [x] Bottom bar: tabs slide left/right; no grey box on tap
 - [x] Sync on app open when the last refresh is older than 2 min (was 10)
-- [ ] Short lag on the first role tap in onboarding (option lists are now cached; recheck on the release build)
+- [x] Short lag on the first role tap in onboarding: debug build only, gone on a normal build
 - [x] Predictive back gesture: page only shrinks, should slide like system apps (onboarding + detail screens); now follows the finger, screens opened on top slide over the previous one
 - [x] Settings → profile "Zmień" should open group selection for the current class directly (teachers: the name step)
 - [x] Plan header chip (class + groups): open a dropdown with plan options instead of jumping to Settings; let it grow so text isn't cut ("F-infor…"). Menu: only my groups, change class/groups (or short/name), Settings
@@ -21,6 +21,7 @@ Living list of what's left before the stable release. Remove this file during th
 - [x] Teacher step with the keyboard open: grid shrinks to a strip and the name suggestions card collapses to a thin line; name entry is its own step, the heading text and the button fold away while typing a search
 - [x] Plan block for a cancelled group lesson repeats the group name as a chip (e.g. "Religia · Religia"); hide the chip when it equals the subject
 - [x] Sync line ("Zsynchronizowano …") shows the same grey box on tap as the bottom bar did; check other custom clickables (chips, tiles, rows) for it too (absent-teachers header was the other one)
+- [x] Long names cut on lesson tiles ("Aplikacje Interneto…", "1at · Infor…"): tap a tile for a details sheet (full names, old → new, EduPage text); titles wrap in blocks of two periods or more
 - [x] Review guessed group section labels (EduPage divisions have no names) and subject names; long ones (e.g. PiKUA) keep the short. All divisions in plan 189 get a label ("grB / grF" = profession)
 
 ## Before stable

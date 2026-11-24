@@ -35,6 +35,11 @@ data class LessonItem(
     val groups: String?,
     val note: LessonNote?,
     val status: LessonStatus,
+    /** Full subject names for the details sheet; tiles may show an acronym. */
+    val subjectName: String,
+    val oldSubjectName: String?,
+    /** The substitution as EduPage words it. */
+    val info: String?,
 ) {
     val isCovering: Boolean get() = note is LessonNote.Covering
 }
@@ -42,8 +47,11 @@ data class LessonItem(
 class LessonItemMapper(private val tt: Timetable) {
 
     private val subjectNames = tt.subjects.values.associate { it.short to it.displayName }
+    private val fullSubjectNames = tt.subjects.values.associate { it.short to it.name }
 
     fun subjectName(short: String?): String = short?.let { subjectNames[it] ?: it }.orEmpty()
+
+    private fun fullSubjectName(short: String?): String = short?.let { fullSubjectNames[it] ?: it }.orEmpty()
 
     /**
      * [showClasses]: prefix titles with the class (teacher and room views).
@@ -104,6 +112,9 @@ class LessonItemMapper(private val tt: Timetable) {
             groups = l.groupNames.withoutSubject(name, subjectShort),
             note = note,
             status = l.status,
+            subjectName = fullSubjectName(subjectShort),
+            oldSubjectName = if (subjectChanged) fullSubjectName(l.subject.old) else null,
+            info = l.substitution?.infoText?.ifBlank { null },
         )
     }
 }
