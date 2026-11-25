@@ -30,6 +30,8 @@ class FakeEdupageApi : EdupageApi {
     var offline = false
     var brokenTimetable = false
     val emptyYears = mutableSetOf<Int>()
+    /** Edits the served substitutions page, e.g. to change a row after it was first fetched. */
+    var editSubstitutions: (String) -> String = { it }
 
     override suspend fun fetchTimetableVersions(schoolYear: Int): String {
         if (offline) throw IOException("offline")
@@ -48,7 +50,7 @@ class FakeEdupageApi : EdupageApi {
         if (offline) throw IOException("offline")
         substitutionCalls += date
         val file = File(fixturesDir, "substitutions/$date.json")
-        return if (file.exists()) file.readText() else fixture("substitutions/2026-11-21.json")
+        return editSubstitutions(if (file.exists()) file.readText() else fixture("substitutions/2026-11-21.json"))
     }
 }
 

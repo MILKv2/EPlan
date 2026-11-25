@@ -4,6 +4,7 @@ import dev.milkthe.qbitplan.core.model.DaySubstitutions
 import dev.milkthe.qbitplan.core.schedule.DayPlanner
 import dev.milkthe.qbitplan.core.schedule.PlannedLesson
 import dev.milkthe.qbitplan.core.schedule.changedLessons
+import dev.milkthe.qbitplan.core.schedule.droppedLessons
 import dev.milkthe.qbitplan.core.schedule.isSchoolDay
 import dev.milkthe.qbitplan.data.Profile
 import dev.milkthe.qbitplan.data.RefreshResult
@@ -21,9 +22,12 @@ import java.time.LocalDate
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/** A notification line: a lesson of the user's plan that changed, or one that left it ([dropped]). */
+data class LessonChange(val lesson: LessonItem, val dropped: Boolean = false)
+
 interface ChangeAlerts {
-    /** [lessons]: the changed lessons of the user's plan on [date]. */
-    fun show(date: LocalDate, lessons: List<LessonItem>)
+    /** [changes]: what changed in the user's plan on [date], by period. */
+    fun show(date: LocalDate, changes: List<LessonChange>)
 
     /** The day changed but couldn't be fetched to say how. */
     fun showUnspecified(date: LocalDate)
@@ -64,7 +68,12 @@ class ChangeNotifier @Inject constructor(
                 is Profile.TeacherProfile -> planner.forTeacher(profile.teacher.id, profile.fullName, date, subs)
             }
             val teacherId = (profile as? Profile.TeacherProfile)?.teacher?.id
-            LessonItemMapper(timetable).map(changedLessons(plan(before), plan(after)), showClasses = teacherId != null, viewerTeacherId = teacherId)
+            val mapper = LessonItemMapper(timetable)
+            fun List<PlannedLesson>.items() = mapper.map(this, showClasses = teacherId != null, viewerTeacherId = teacherId)
+            val old = plan(before)
+            val new = plan(after)
+            (changedLessons(old, new).items().map { LessonChange(it) } + droppedLessons(old, new).items().map { LessonChange(it, dropped = true) })
+                .sortedBy { it.lesson.periods.first }
         }
         if (changes.isNotEmpty()) alerts.show(date, changes)
     }
