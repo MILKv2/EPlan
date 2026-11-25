@@ -32,8 +32,8 @@ class NotificationAlerts @Inject constructor(
     private val clock: Clock,
 ) : ChangeAlerts {
 
-    override fun show(date: LocalDate, lessons: List<LessonItem>) {
-        post(date, lessons.map(::line))
+    override fun show(date: LocalDate, changes: List<LessonChange>) {
+        post(date, changes.map { if (it.dropped) droppedLine(it.lesson) else line(it.lesson) })
     }
 
     override fun showUnspecified(date: LocalDate) {
@@ -106,6 +106,12 @@ class NotificationAlerts @Inject constructor(
             }
         }
         return context.getString(R.string.push_line, item.periods.text(), item.title, details.joinToString(", "))
+    }
+
+    /** "4. 1at · Informatyka: już nie zastępujesz". */
+    private fun droppedLine(item: LessonItem): String {
+        val details = context.getString(if (item.isCovering) R.string.push_cover_dropped else R.string.push_dropped)
+        return context.getString(R.string.push_line, item.periods.text(), item.title, details)
     }
 
     private fun noteText(note: LessonNote): String = when (note) {

@@ -7,7 +7,6 @@ import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
 import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
-import dev.milkthe.qbitplan.ui.common.LessonItem
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,9 +39,9 @@ class ChangeNotifierTest {
     private lateinit var notifier: ChangeNotifier
 
     private class RecordingAlerts : ChangeAlerts {
-        val shown = mutableListOf<Pair<LocalDate, List<LessonItem>>>()
+        val shown = mutableListOf<Pair<LocalDate, List<LessonChange>>>()
         val unspecified = mutableListOf<LocalDate>()
-        override fun show(date: LocalDate, lessons: List<LessonItem>) { shown += date to lessons }
+        override fun show(date: LocalDate, changes: List<LessonChange>) { shown += date to changes }
         override fun showUnspecified(date: LocalDate) { unspecified += date }
     }
 
@@ -61,7 +60,8 @@ class ChangeNotifierTest {
     fun `a student hears about their groups' changes once`() = runBlocking {
         prefs.setStudent("-210", "1at", setOf("2. Grupa"))
         notifier.onDayChanged(tuesday)
-        val (date, lessons) = alerts.shown.single()
+        val (date, changes) = alerts.shown.single()
+        val lessons = changes.map { it.lesson }
         assertEquals(tuesday, date)
         assertEquals(listOf(4, 5, 9), lessons.map { it.periods.first })
         assertEquals(LessonStatus.CANCELLED, lessons.last().status)
@@ -75,7 +75,29 @@ class ChangeNotifierTest {
     fun `a teacher hears about the lesson they cover`() = runBlocking {
         prefs.setTeacher("-161", "AG", "Anna Grzebień")
         notifier.onDayChanged(tuesday)
-        assertTrue(alerts.shown.single().second.any { it.isCovering && it.periods.first == 4 })
+        assertTrue(alerts.shown.single().second.any { it.lesson.isCovering && it.lesson.periods.first == 4 })
+    }
+
+    @Test
+    fun `a teacher hears when their cover goes to someone else`() = runBlocking {
+        prefs.setTeacher("-161", "AG", "Anna Grzebień")
+        notifier.onDayChanged(tuesday)
+        api.editSubstitutions = { it.replace("Anna Grzebień", "Dorota Dziadosz") }
+        notifier.onDayChanged(tuesday)
+        val change = alerts.shown.last().second.single()
+        assertTrue(change.dropped && change.lesson.isCovering)
+        assertEquals(4, change.lesson.periods.first)
+    }
+
+    @Test
+    fun `a substitute swapped later in the day is news to the class`() = runBlocking {
+        prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        notifier.onDayChanged(tuesday)
+        api.editSubstitutions = { it.replace("Anna Grzebień", "Dorota Dziadosz") }
+        notifier.onDayChanged(tuesday)
+        val change = alerts.shown.last().second.single()
+        assertEquals(4, change.lesson.periods.first)
+        assertEquals("Dorota Dziadosz", change.lesson.who)
     }
 
     @Test

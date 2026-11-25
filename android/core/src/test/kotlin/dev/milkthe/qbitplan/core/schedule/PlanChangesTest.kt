@@ -46,4 +46,26 @@ class PlanChangesTest {
     fun `the same plan has no changes`() {
         assertEquals(emptyList(), changedLessons(planner.forClass(classId, tuesday, subs), planner.forClass(classId, tuesday, subs)))
     }
+
+    @Test
+    fun `a cover handed to someone else leaves the first teacher's plan`() {
+        val teacher = tt.teachers.values.single { it.short == "AG" }
+        val handedOver = subs.copy(
+            substitutions = subs.substitutions.map { row ->
+                if (row.teacher?.new == "Anna Grzebień") row.copy(teacher = row.teacher!!.copy(new = "Dorota Dziadosz")) else row
+            },
+        )
+        val before = planner.forTeacher(teacher.id, "Anna Grzebień", tuesday, subs)
+        val after = planner.forTeacher(teacher.id, "Anna Grzebień", tuesday, handedOver)
+        assertEquals(emptyList(), changedLessons(before, after))
+        val dropped = droppedLessons(before, after).single()
+        assertEquals(4, dropped.periods.first)
+        assertEquals(listOf("1at"), dropped.classNames)
+    }
+
+    @Test
+    fun `a lesson that only changed is not dropped`() {
+        assertEquals(emptyList(), droppedLessons(planner.forClass(classId, tuesday, null), planner.forClass(classId, tuesday, subs)))
+        assertEquals(emptyList(), droppedLessons(planner.forClass(classId, tuesday, subs), planner.forClass(classId, tuesday, null)))
+    }
 }

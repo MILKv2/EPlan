@@ -247,4 +247,6 @@
     <string name="push_changed">zmiana</string>
     <string name="push_teacher">uczy %1$s</string>
     <string name="push_back_to_plan">znów zgodnie z planem</string>
+    <string name="push_cover_dropped">już nie zastępujesz</string>
+    <string name="push_dropped">zniknęła z planu</string>
 </resources>
