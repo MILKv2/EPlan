@@ -25,7 +25,7 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** One notification per day of changes; a newer push about the same day replaces it. */
+/** One notification per day of changes; a newer push about the same day adds to it while it is still shown. */
 @Singleton
 class NotificationAlerts @Inject constructor(
     @ApplicationContext private val context: Context,
@@ -33,11 +33,11 @@ class NotificationAlerts @Inject constructor(
 ) : ChangeAlerts {
 
     override fun show(date: LocalDate, changes: List<LessonChange>) {
-        post(date, changes.map { if (it.dropped) droppedLine(it.lesson) else line(it.lesson) })
+        post(date, changes.map { NotificationLine(it.lesson.periods, if (it.dropped) droppedLine(it.lesson) else line(it.lesson)) })
     }
 
     override fun showUnspecified(date: LocalDate) {
-        post(date, listOf(context.getString(R.string.push_unknown)))
+        post(date, listOf(NotificationLine(null, context.getString(R.string.push_unknown))))
     }
 
     fun createChannel() {
@@ -47,11 +47,16 @@ class NotificationAlerts @Inject constructor(
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    private fun post(date: LocalDate, lines: List<String>) {
+    private fun post(date: LocalDate, added: List<NotificationLine>) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) return
         createChannel()
+        val id = date.toEpochDay().toInt()
+        val shown = context.getSystemService(NotificationManager::class.java).activeNotifications
+            .firstOrNull { it.id == id && it.tag == null }?.notification?.extras?.notificationLines().orEmpty()
+        val merged = mergeLines(shown, added)
+        val lines = merged.map { it.text }
         val open = PendingIntent.getActivity(
             context,
             0,
@@ -64,13 +69,14 @@ class NotificationAlerts @Inject constructor(
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(context.getString(R.string.push_title, dayText(date)))
-            .setContentText(lines.first())
+            .setContentText(added.first().text)
             .setStyle(style)
             .setContentIntent(open)
             .setAutoCancel(true)
             .setCategory(NotificationCompat.CATEGORY_EVENT)
+            .addExtras(merged.toExtras())
             .build()
-        NotificationManagerCompat.from(context).notify(date.toEpochDay().toInt(), notification)
+        NotificationManagerCompat.from(context).notify(id, notification)
     }
 
     private fun dayText(date: LocalDate): String {
