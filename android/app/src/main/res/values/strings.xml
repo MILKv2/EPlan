@@ -58,9 +58,6 @@
     <string name="plan_show_day">Pokaż dzień</string>
     <string name="plan_no_lessons_title">Brak lekcji</string>
     <string name="plan_no_lessons_text">Tego dnia nie masz lekcji.</string>
-    <string name="plan_weekend_title">Weekend, wolne</string>
-    <string name="plan_weekend_text">Najbliższe lekcje w poniedziałek %1$s.</string>
-    <string name="plan_show_monday">Pokaż poniedziałek</string>
 
     <!-- Substitutions -->
     <string name="calendar_open">Wybierz dzień z kalendarza</string>
