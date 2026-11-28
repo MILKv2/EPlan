@@ -169,6 +169,8 @@
     <string name="about_source_value">GitHub</string>
     <string name="about_license">Licencja</string>
     <string name="about_license_value">GPL-3.0</string>
+    <string name="about_privacy">Polityka prywatności</string>
+    <string name="about_privacy_value">Bez konta, reklam i analityki</string>
     <string name="about_oss_licenses">Licencje open source</string>
     <string name="about_oss_desc">Biblioteki użyte w aplikacji</string>
     <string name="contact_discord" translatable="false">milkv2</string>

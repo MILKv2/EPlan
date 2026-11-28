@@ -22,6 +22,8 @@ Twój plan z naniesionymi zastępstwami, od razu po otwarciu, także bez interne
   i odlicza czas.
 - **Powiadomienia o zmianach.** Gdy w Twoim planie pojawi się zastępstwo, odwołanie albo
   zmiana sali, telefon da znać. Tylko o tym, co dotyczy Ciebie. W weekend może milczeć.
+- **Nowy plan lekcji bez niespodzianek.** Gdy szkoła opublikuje nowy plan, apka pokaże
+  go od dnia, w którym zaczyna obowiązywać, i da znać powiadomieniem.
 - **Wszystkie zastępstwa dnia.** Kto jest nieobecny, które sale są zajęte, zmiany
   w Twojej klasie na górze listy. Dowolny dzień z kalendarza.
 - **Szukaj.** Plan dowolnego nauczyciela, sali albo klasy oraz **wolne sale** teraz
@@ -51,7 +53,8 @@ na starą: profil i ustawienia zostają.
 Bez konta i bez logowania. Twój profil (klasa, grupy, nazwisko nauczyciela) zostaje
 na telefonie. Aplikacja łączy się tylko z publicznym planem szkoły. Powiadomienia
 przychodzą przez Firebase Cloud Messaging: telefon zapisuje się na kanał swojej klasy
-(albo nauczyciela) i nic więcej o Tobie nie wysyła.
+(albo nauczyciela) i kanał nowego planu, i nic więcej o Tobie nie wysyła.
+Szczegóły: [polityka prywatności](docs/privacy.md).
 
 ## Błędy i pomysły
 

@@ -1,5 +1,6 @@
 package dev.milkthe.qbitplan.data
 
+import dev.milkthe.qbitplan.BuildConfig
 import dev.milkthe.qbitplan.core.update.AppRelease
 import dev.milkthe.qbitplan.core.update.AppVersion
 import dev.milkthe.qbitplan.core.update.ReleaseApi
@@ -40,6 +41,7 @@ sealed interface UpdateStatus {
 /**
  * Checks GitHub for a newer release. The response is cached like EduPage ones, so the
  * "new version" hint survives restarts and offline starts without asking again.
+ * The Play build never checks: Google Play updates it.
  */
 @Singleton
 class UpdateRepository @Inject constructor(
@@ -77,6 +79,7 @@ class UpdateRepository @Inject constructor(
 
     /** On app start: at most every [CHECK_EVERY], and after a failure not again for [RETRY_AFTER]. */
     fun checkIfDue() {
+        if (!BuildConfig.SELF_UPDATE) return
         scope.launch {
             val now = clock.instant()
             if (lastAttempt?.plus(RETRY_AFTER)?.isAfter(now) == true) return@launch
@@ -86,6 +89,7 @@ class UpdateRepository @Inject constructor(
     }
 
     fun checkNow() {
+        if (!BuildConfig.SELF_UPDATE) return
         scope.launch { check() }
     }
 

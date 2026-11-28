@@ -1,5 +1,6 @@
 # A versionName bump in android/version.properties merged to main → tests → signed APK
-# → GitHub Release v<versionName> (the tag is created here). Re-run by hand with "Run workflow"
+# → GitHub Release v<versionName> (the tag is created here). The signed Play bundle (AAB) is
+# kept as a run artifact for upload in Play Console. Re-run by hand with "Run workflow"
 # if a run failed; a version that already has a tag is skipped.
 # Secrets: KEYSTORE_BASE64 (base64 .jks), KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD.
 name: Android release
@@ -69,11 +70,21 @@ jobs:
           QBIT_KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           QBIT_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           QBIT_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest :app:assembleRelease
+        run: ./gradlew --no-daemon :core:test :app:testGithubDebugUnitTest :app:assembleGithubRelease :app:bundlePlayRelease
 
-      - name: Rename APK
+      - name: Rename APK and AAB
         if: steps.version.outputs.exists != 'true'
-        run: cp app/build/outputs/apk/release/app-release.apk "E-Plan-${{ steps.version.outputs.tag }}.apk"
+        run: |
+          cp app/build/outputs/apk/github/release/app-github-release.apk "E-Plan-${{ steps.version.outputs.tag }}.apk"
+          cp app/build/outputs/bundle/playRelease/app-play-release.aab "E-Plan-${{ steps.version.outputs.tag }}.aab"
+
+      # Not a release asset: users install the APK; the bundle goes to Play Console.
+      - uses: actions/upload-artifact@v4
+        if: steps.version.outputs.exists != 'true'
+        with:
+          name: play-bundle-${{ steps.version.outputs.tag }}
+          path: android/E-Plan-${{ steps.version.outputs.tag }}.aab
+          retention-days: 90
 
       # The app's update check reads the newest non-draft release and its .apk asset.
       - uses: softprops/action-gh-release@v2

@@ -22,6 +22,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.PrivacyTip
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.CircularProgressIndicator
@@ -54,6 +55,7 @@ import dev.milkthe.qbitplan.ui.theme.QbitTheme
 private const val AUTHOR_URL = "https://milkthe.dev"
 private const val REPO_URL = "https://github.com/MILKv2/EPlan"
 private const val LICENSE_URL = "https://www.gnu.org/licenses/gpl-3.0.html"
+private const val PRIVACY_URL = "https://github.com/MILKv2/EPlan/blob/main/docs/privacy.md"
 
 @Composable
 fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit, vm: AboutViewModel = hiltViewModel()) {
@@ -74,7 +76,7 @@ fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit, vm: AboutViewModel =
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp).clip(RoundedCornerShape(16.dp)).background(colors.surfaceSecondary).padding(horizontal = 16.dp, vertical = 14.dp),
             )
-            UpdateRow(update, onCheck = vm::checkNow, onDownload = { uri.openUri(it.apkUrl ?: it.pageUrl) })
+            if (BuildConfig.SELF_UPDATE) UpdateRow(update, onCheck = vm::checkNow, onDownload = { uri.openUri(it.apkUrl ?: it.pageUrl) })
             val context = LocalContext.current
             val discord = stringResource(R.string.contact_discord)
             SettingsRow(
@@ -88,6 +90,7 @@ fun AboutScreen(onBack: () -> Unit, onLicenses: () -> Unit, vm: AboutViewModel =
             LinkRow(Icons.Outlined.Person, stringResource(R.string.about_author), stringResource(R.string.about_author_value)) { uri.openUri(AUTHOR_URL) }
             LinkRow(Icons.Outlined.Code, stringResource(R.string.about_source), stringResource(R.string.about_source_value)) { uri.openUri(REPO_URL) }
             LinkRow(Icons.Outlined.Description, stringResource(R.string.about_license), stringResource(R.string.about_license_value)) { uri.openUri(LICENSE_URL) }
+            LinkRow(Icons.Outlined.PrivacyTip, stringResource(R.string.about_privacy), stringResource(R.string.about_privacy_value)) { uri.openUri(PRIVACY_URL) }
             SettingsRow(stringResource(R.string.about_oss_licenses), stringResource(R.string.about_oss_desc), onClick = onLicenses, leading = { Icon(Icons.AutoMirrored.Outlined.LibraryBooks, contentDescription = null, tint = colors.muted) }) { Chevron() }
         }
     }

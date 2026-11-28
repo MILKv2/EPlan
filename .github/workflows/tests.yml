@@ -33,7 +33,7 @@ jobs:
 
       # Record mode also writes every screen as a PNG, kept as the "screenshots" artifact for review.
       - name: Unit tests
-        run: ./gradlew --no-daemon :core:test :app:testDebugUnitTest -Proborazzi.record=true
+        run: ./gradlew --no-daemon :core:test :app:testGithubDebugUnitTest -Proborazzi.record=true
 
       - name: Upload screenshots
         if: always()

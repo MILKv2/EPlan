@@ -31,9 +31,10 @@ Wymagania: JDK 17+ i Android SDK z platformą `android-37.2`
 
 ```bash
 ./gradlew :core:test                 # parsery i logika (fixtures z ../fixtures)
-./gradlew :app:testDebugUnitTest     # repozytorium + render wszystkich ekranów (Robolectric)
-./gradlew :app:testDebugUnitTest -Proborazzi.record=true   # zrzuty ekranów → app/build/screenshots/
-./gradlew :app:assembleDebug         # APK → app/build/outputs/apk/debug/
+./gradlew :app:testGithubDebugUnitTest     # repozytorium + render wszystkich ekranów (Robolectric)
+./gradlew :app:testGithubDebugUnitTest -Proborazzi.record=true   # zrzuty ekranów i grafiki sklepu → app/build/screenshots/
+./gradlew :app:assembleGithubDebug         # APK → app/build/outputs/apk/github/debug/
+./gradlew :app:bundlePlayRelease           # AAB do Google Play → app/build/outputs/bundle/playRelease/
 
 # test na prawdziwym EduPage (wykrywa zmianę formatu po stronie szkoły)
 QBIT_LIVE=1 ./gradlew :core:test --tests '*LiveEdupageTest*' --rerun
@@ -54,5 +55,5 @@ keyPassword=…
 ```
 
 W CI te same wartości idą ze zmiennych `QBIT_KEYSTORE_*` (zob.
-`.github/workflows/android.yml`). Bez nich `assembleRelease` buduje
+`.github/workflows/android.yml`). Bez nich `assembleGithubRelease` buduje
 niepodpisany APK.

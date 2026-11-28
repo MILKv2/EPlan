@@ -56,6 +56,19 @@ android {
         }
     }
 
+    // github: APK from GitHub Releases, checks for updates there. play: Google Play updates it.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("github") {
+            dimension = "distribution"
+            buildConfigField("boolean", "SELF_UPDATE", "true")
+        }
+        create("play") {
+            dimension = "distribution"
+            buildConfigField("boolean", "SELF_UPDATE", "false")
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
