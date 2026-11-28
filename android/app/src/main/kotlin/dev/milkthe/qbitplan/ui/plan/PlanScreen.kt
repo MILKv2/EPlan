@@ -258,7 +258,7 @@ private fun ProfileMenu(header: PlanHeader, actions: PlanMenuActions) {
 private fun ProfileChip(profile: Profile?, onClick: () -> Unit) {
     val colors = QbitTheme.colors
     val (main, sub) = when (profile) {
-        is Profile.Student -> profile.schoolClass.short to profile.groupNames.sorted().joinToString(" · ").ifEmpty { stringResource(R.string.plan_whole_class) }
+        is Profile.Student -> profile.schoolClass.short to profile.groups.picked.sorted().joinToString(" · ").ifEmpty { stringResource(R.string.plan_whole_class) }
         is Profile.TeacherProfile -> profile.teacher.short to profile.fullName.orEmpty()
         null -> "" to ""
     }

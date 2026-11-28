@@ -199,6 +199,7 @@
     <string name="onboarding_groups_title">Twoje grupy</string>
     <string name="onboarding_groups_text">Pokażemy tylko lekcje, na które chodzisz.</string>
     <string name="groups_all">Wszystkie</string>
+    <string name="groups_none">Żadne</string>
     <string name="division_split">Podział klasy</string>
     <string name="division_english">Język angielski</string>
     <string name="division_german">Język niemiecki</string>

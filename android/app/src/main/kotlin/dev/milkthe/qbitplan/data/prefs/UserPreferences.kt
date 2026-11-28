@@ -16,6 +16,8 @@ data class UserPreferences(
     val classId: String? = null,
     val classShort: String? = null,
     val groupNames: Set<String> = emptySet(),
+    /** Groups of a division the student attends none of (religion/ethics). */
+    val skippedGroupNames: Set<String> = emptySet(),
     val teacherId: String? = null,
     val teacherShort: String? = null,
     /** Full name as used in substitutions; links the plan (shorts) to substitutions. */

@@ -119,14 +119,20 @@ data class Timetable(
 
     /**
      * A group lesson is shown when the student picked that group, or picked
-     * nothing in that division (we can't tell, so we show it).
+     * nothing in that division (we can't tell, so we show it). A division with
+     * [skippedGroupIds] is decided: none of its groups is the student's.
      */
-    fun isForClass(lesson: TimetableLesson, classId: String, selectedGroupIds: Set<String>?): Boolean {
+    fun isForClass(
+        lesson: TimetableLesson,
+        classId: String,
+        selectedGroupIds: Set<String>?,
+        skippedGroupIds: Set<String> = emptySet(),
+    ): Boolean {
         if (classId !in lesson.classIds) return false
         val lessonGroups = lesson.groupIds.mapNotNull { groups[it] }.filter { it.classId == classId }
         if (lessonGroups.isEmpty() || lessonGroups.any { it.entireClass }) return true
         if (selectedGroupIds == null) return true
-        val selectedDivisions = selectedGroupIds.mapNotNull { groups[it]?.division }.toSet()
-        return lessonGroups.any { it.id in selectedGroupIds || it.division !in selectedDivisions }
+        val decidedDivisions = (selectedGroupIds + skippedGroupIds).mapNotNull { groups[it]?.division }.toSet()
+        return lessonGroups.any { it.id in selectedGroupIds || it.division !in decidedDivisions }
     }
 }

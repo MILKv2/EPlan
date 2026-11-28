@@ -52,7 +52,10 @@ data class Selection(
     val mode: UserMode = UserMode.STUDENT,
     val classId: String? = null,
     val classQuery: String = "",
+    /** Division id → group name, `null` = all groups. */
     val groups: Map<String, String?> = emptyMap(),
+    /** Optional divisions the student attends none of. */
+    val skippedDivisions: Set<String> = emptySet(),
     val teacherId: String? = null,
     val teacherQuery: String = "",
     /** Picked suggestion; `null` = typing the name. */
@@ -164,11 +167,13 @@ class OnboardingViewModel @Inject constructor(
 
     fun chooseMode(mode: UserMode) = edit { it.copy(mode = mode) }
 
-    fun chooseClass(id: String) = edit { it.copy(classId = id, groups = emptyMap()) }
+    fun chooseClass(id: String) = edit { it.copy(classId = id, groups = emptyMap(), skippedDivisions = emptySet()) }
 
     fun setClassQuery(query: String) = edit { it.copy(classQuery = query) }
 
-    fun setGroup(division: String, name: String?) = edit { it.copy(groups = it.groups + (division to name)) }
+    fun setGroup(division: String, name: String?) = edit { it.copy(groups = it.groups + (division to name), skippedDivisions = it.skippedDivisions - division) }
+
+    fun skipDivision(division: String) = edit { it.copy(groups = it.groups - division, skippedDivisions = it.skippedDivisions + division) }
 
     fun chooseTeacher(id: String) = edit { it.copy(teacherId = id, pickedName = null) }
 
@@ -203,7 +208,8 @@ class OnboardingViewModel @Inject constructor(
             when (sel.mode) {
                 UserMode.STUDENT -> {
                     val cls = sel.classId?.let { tt.classes[it] } ?: return@launch
-                    preferences.setStudent(cls.id, cls.short, sel.groups.values.filterNotNull().toSet())
+                    val divs = withContext(Dispatchers.Default) { divisionsOf(tt, cls.id) }
+                    preferences.setStudent(cls.id, cls.short, sel.groupSelection(divs))
                 }
                 UserMode.TEACHER -> {
                     // The name is the surer identity: two teachers can share a short.
@@ -255,6 +261,7 @@ class OnboardingViewModel @Inject constructor(
                 mode = UserMode.STUDENT,
                 classId = cls?.id,
                 groups = divs.associate { d -> d.id to d.options.firstOrNull { it in prefs.groupNames } },
+                skippedDivisions = divs.filter { d -> d.optional && d.options.any { it in prefs.skippedGroupNames } }.map { it.id }.toSet(),
             )
         }
     }

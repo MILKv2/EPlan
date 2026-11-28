@@ -63,7 +63,7 @@ class ChangeNotifier @Inject constructor(
             fun plan(subs: DaySubstitutions?): List<PlannedLesson> = when (profile) {
                 is Profile.Student -> planner.forClass(
                     profile.schoolClass.id, date, subs,
-                    selectedGroupNames = profile.groupNames.takeIf { prefs.onlyMyGroups && it.isNotEmpty() },
+                    groups = profile.groups.takeIf { prefs.onlyMyGroups && !it.isEmpty },
                 )
                 is Profile.TeacherProfile -> planner.forTeacher(profile.teacher.id, profile.fullName, date, subs)
             }

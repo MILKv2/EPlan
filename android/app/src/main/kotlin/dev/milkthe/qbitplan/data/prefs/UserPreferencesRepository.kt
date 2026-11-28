@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.VersionPin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -23,14 +24,13 @@ class UserPreferencesRepository @Inject constructor(
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
         .map { it.toUserPreferences() }
 
-    suspend fun setStudent(classId: String, classShort: String, groupNames: Set<String>) = dataStore.edit {
+    suspend fun setStudent(classId: String, classShort: String, groups: GroupSelection) = dataStore.edit {
         it[MODE] = UserMode.STUDENT.name
         it[CLASS_ID] = classId
         it[CLASS_SHORT] = classShort
-        it[GROUP_NAMES] = groupNames
+        it[GROUP_NAMES] = groups.picked
+        it[SKIPPED_GROUP_NAMES] = groups.skipped
     }
-
-    suspend fun setGroups(groupNames: Set<String>) = dataStore.edit { it[GROUP_NAMES] = groupNames }
 
     suspend fun setTeacher(teacherId: String, teacherShort: String, fullName: String) = dataStore.edit {
         it[MODE] = UserMode.TEACHER.name
@@ -68,6 +68,7 @@ class UserPreferencesRepository @Inject constructor(
         classId = this[CLASS_ID],
         classShort = this[CLASS_SHORT],
         groupNames = this[GROUP_NAMES].orEmpty(),
+        skippedGroupNames = this[SKIPPED_GROUP_NAMES].orEmpty(),
         teacherId = this[TEACHER_ID],
         teacherShort = this[TEACHER_SHORT],
         teacherFullName = this[TEACHER_FULL_NAME],
@@ -85,6 +86,7 @@ class UserPreferencesRepository @Inject constructor(
         val CLASS_ID = stringPreferencesKey("class_id")
         val CLASS_SHORT = stringPreferencesKey("class_short")
         val GROUP_NAMES = stringSetPreferencesKey("group_names")
+        val SKIPPED_GROUP_NAMES = stringSetPreferencesKey("skipped_group_names")
         val TEACHER_ID = stringPreferencesKey("teacher_id")
         val TEACHER_SHORT = stringPreferencesKey("teacher_short")
         val TEACHER_FULL_NAME = stringPreferencesKey("teacher_full_name")

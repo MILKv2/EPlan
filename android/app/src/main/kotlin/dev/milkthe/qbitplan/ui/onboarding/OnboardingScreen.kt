@@ -318,12 +318,15 @@ private fun ColumnScope.GroupsStep(state: OnboardingState, sel: Selection, vm: O
         state.divisions.forEach { division ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 SectionLabel(division.label?.let { stringResource(it) } ?: division.options.joinToString(" / "))
-                val options = division.options + stringResource(R.string.groups_all)
-                val current = sel.groups[division.id]
+                val options = division.options + stringResource(if (division.optional) R.string.groups_none else R.string.groups_all)
+                val current = sel.pickIn(division)
                 SegmentedControl(
                     options = options,
                     selected = current?.let { division.options.indexOf(it) } ?: division.options.size,
-                    onSelect = { vm.setGroup(division.id, division.options.getOrNull(it)) },
+                    onSelect = {
+                        val name = division.options.getOrNull(it)
+                        if (name == null && division.optional) vm.skipDivision(division.id) else vm.setGroup(division.id, name)
+                    },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
