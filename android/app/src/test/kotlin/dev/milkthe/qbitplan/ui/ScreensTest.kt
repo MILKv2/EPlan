@@ -50,8 +50,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Before
@@ -255,11 +253,13 @@ class ScreensTest {
     @Test
     fun planOpensNextWeekAfterFridayLessons() {
         student()
-        clock.now = LocalDateTime.of(2026, 11, 27, 16, 0).atZone(zone).toInstant()
+        clock.now = LocalDateTime.of(2026, 11, 27, 19, 0).atZone(zone).toInstant()
         val vm = PlanViewModel(repo, prefs, sync, planDays, clock)
-        val week = runBlocking { withTimeout(15_000) { vm.week.filterNotNull().first() } }
-        assertEquals(LocalDate.of(2026, 11, 30), week.dates[week.initialPage])
         show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = vm) }
+        // Not runBlocking: the view model's flows run on the main looper, which the compose rule pumps.
+        compose.waitUntil(15_000) { vm.week.value != null }
+        val week = vm.week.value!!
+        assertEquals(LocalDate.of(2026, 11, 30), week.dates[week.initialPage])
         waitForText("Zsynchronizowano")
         capture("plan_next_week")
     }

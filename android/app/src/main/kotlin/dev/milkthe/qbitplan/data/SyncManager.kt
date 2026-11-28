@@ -42,7 +42,14 @@ class SyncManager @Inject constructor(
     /** A full refresh for the day the plan opens on, honouring a version pinned in Settings. */
     suspend fun refreshNow(): RefreshResult {
         val pin = preferences.preferences.first().versionPin
-        val result = repository.refresh(versionDate = startDay(), pin = pin)
+        val day = startDay()
+        var result = repository.refresh(versionDate = day, pin = pin)
+        // Without a timetable the last lesson is unknown, so the first pick is for today; once it is
+        // known the plan may open on the next school day, which another version may cover.
+        val next = startDay()
+        if (result == RefreshResult.Success && next != day) {
+            result = repository.refresh(substitutionDates = emptyList(), versionDate = next, pin = pin)
+        }
         if (pin != null && result == RefreshResult.Success) {
             val current = repository.versions.first()
             if (current != null && !current.versions.isPinValid(pin, current.schoolYear)) preferences.setVersionPin(null)

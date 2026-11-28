@@ -101,7 +101,7 @@ class SubstitutionsViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.Eagerly, QuickDays.of(LocalDate.now(clock)))
 
     /** The day the tab last opened on by itself; while it is still selected, the tab moves on with the start day. */
-    private var autoSelected: LocalDate? = null
+    @Volatile private var autoSelected: LocalDate? = null
 
     /** `null` until the start day is known: after the profile's last lesson the tab opens on the next school day. */
     private val selected = MutableStateFlow<LocalDate?>(null)
@@ -152,7 +152,7 @@ class SubstitutionsViewModel @Inject constructor(
 
     init {
         quickDays.value.days.forEach(sync::ensureSubstitutions)
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.Default) {
             tracker.days.filterNotNull().collect { days ->
                 QuickDays.of(days.today).days.forEach(sync::ensureSubstitutions)
                 // A pick made meanwhile wins, unless the app was away and the start day moved on.

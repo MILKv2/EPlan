@@ -90,6 +90,7 @@ class StoreGraphicsTest {
         prefs = UserPreferencesRepository(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "test.preferences_pb") })
         repo.refresh(listOf(LocalDate.of(2026, 11, 24), LocalDate.of(2026, 11, 25)), versionDate = LocalDate.of(2026, 11, 24))
         prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        Unit
     }
 
     @After
