@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.milkthe.qbitplan.core.schedule.DayPlanner
 import dev.milkthe.qbitplan.core.schedule.LessonStatus
-import dev.milkthe.qbitplan.core.schedule.isSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
 import dev.milkthe.qbitplan.core.schedule.schoolWeekOf
 import dev.milkthe.qbitplan.data.Profile
@@ -84,8 +83,6 @@ class PlanViewModel @Inject constructor(
 
     private val openedOn: LocalDate = LocalDate.now(clock)
 
-    private val weekendState = MutableStateFlow(!openedOn.isSchoolDay())
-    val showWeekend: StateFlow<Boolean> = weekendState.asStateFlow()
 
     private val modeState = MutableStateFlow(PlanMode.DAY)
     val mode: StateFlow<PlanMode> = modeState.asStateFlow()
@@ -137,7 +134,6 @@ class PlanViewModel @Inject constructor(
 
         val dates = schoolWeekOf(days.start)
         dates.forEach(sync::ensureSubstitutions)
-        if (current != null && current.today != days.today) weekendState.value = !days.today.isSchoolDay()
         val next = PlanWeek(dates, dates.indexOf(days.start), chips(dates), days.today)
         if (next != current) userMoved = false
         return next
@@ -174,12 +170,10 @@ class PlanViewModel @Inject constructor(
         }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DayPlanState.Loading)
 
     fun toggleWeek() {
-        weekendState.value = false
         modeState.value = if (modeState.value == PlanMode.DAY) PlanMode.WEEK else PlanMode.DAY
     }
 
     fun showDay() {
-        weekendState.value = false
         modeState.value = PlanMode.DAY
     }
 

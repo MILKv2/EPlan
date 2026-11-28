@@ -75,7 +75,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.milkthe.qbitplan.R
 import dev.milkthe.qbitplan.data.Profile
-import dev.milkthe.qbitplan.ui.common.ButtonVariant
 import dev.milkthe.qbitplan.ui.common.DaySelector
 import dev.milkthe.qbitplan.ui.common.Hairline
 import dev.milkthe.qbitplan.ui.common.LessonItem
@@ -86,7 +85,6 @@ import dev.milkthe.qbitplan.ui.common.StateMessage
 import dev.milkthe.qbitplan.ui.common.SyncLine
 import dev.milkthe.qbitplan.ui.common.Timeline
 import dev.milkthe.qbitplan.ui.common.dayOfWeekText
-import dev.milkthe.qbitplan.ui.common.shortText
 import dev.milkthe.qbitplan.ui.common.striped
 import dev.milkthe.qbitplan.ui.common.surface
 import dev.milkthe.qbitplan.ui.common.text
@@ -102,8 +100,7 @@ fun PlanScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, onOpenVers
     val header by vm.header.collectAsStateWithLifecycle()
     val week by vm.week.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
-    val weekend by vm.showWeekend.collectAsStateWithLifecycle()
-    val isWeek = mode == PlanMode.WEEK && !weekend
+    val isWeek = mode == PlanMode.WEEK
 
     Column(Modifier.fillMaxSize().statusBarsPadding()) {
         when (val w = week) {
@@ -112,7 +109,7 @@ fun PlanScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, onOpenVers
                 LoadingBox()
             }
             // A new week gets a new pager, opened on the week's start day.
-            else -> key(w.dates.first()) { PlanContent(vm, w, header, isWeek, weekend, menu) }
+            else -> key(w.dates.first()) { PlanContent(vm, w, header, isWeek, menu) }
         }
     }
 }
@@ -146,7 +143,6 @@ private fun ColumnScope.PlanContent(
     week: PlanWeek,
     header: PlanHeader,
     isWeek: Boolean,
-    weekend: Boolean,
     menu: PlanMenuActions,
 ) {
     val chips by vm.dayChips.collectAsStateWithLifecycle()
@@ -163,7 +159,7 @@ private fun ColumnScope.PlanContent(
     if (!isWeek) {
         DaySelector(
             days = chips.ifEmpty { week.chips },
-            position = if (weekend) -1f else pager.currentPage + pager.currentPageOffsetFraction,
+            position = pager.currentPage + pager.currentPageOffsetFraction,
             onSelect = { index ->
                 vm.showDay()
                 scope.launch { pager.animateScrollToPage(index) }
@@ -187,10 +183,6 @@ private fun ColumnScope.PlanContent(
             title = stringResource(R.string.error_title),
             text = stringResource(R.string.error_text),
         ) { QbitButton(stringResource(R.string.retry), vm::refresh) }
-        weekend -> Weekend(week.dates.first(), onShowMonday = {
-            vm.showDay()
-            scope.launch { pager.scrollToPage(0) }
-        })
         isWeek -> WeekGrid(vm, week.dates, week.today, header.isTeacher, onPick = { index ->
             vm.showDay()
             scope.launch { pager.scrollToPage(index) }
@@ -312,18 +304,6 @@ private fun DayPage(vm: PlanViewModel, date: LocalDate, isToday: Boolean, isCurr
                 Timeline(s.lessons, isToday = isToday)
             }
         }
-    }
-}
-
-@Composable
-private fun Weekend(monday: LocalDate, onShowMonday: () -> Unit) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        StateMessage(
-            icon = Icons.Outlined.WbSunny,
-            tone = QbitTheme.colors.accent,
-            title = stringResource(R.string.plan_weekend_title),
-            text = stringResource(R.string.plan_weekend_text, monday.shortText()),
-        ) { QbitButton(stringResource(R.string.plan_show_monday), onShowMonday, variant = ButtonVariant.Secondary) }
     }
 }
 
