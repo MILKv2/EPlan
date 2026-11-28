@@ -58,7 +58,7 @@ Jak wydać nową wersję:
 2. Zmerguj PR do `main`. Workflow `android.yml` uruchomi testy, zbuduje podpisany
    `E-Plan-v1.0.2.apk`, utworzy tag `v1.0.2` i Release z listą zmian z PR-ów.
    Podpisany `E-Plan-v1.0.2.aab` (wariant `play`) trafia do artefaktów tego przebiegu;
-   wgrywa się go w Play Console (zob. [`play/README.md`](play/README.md)).
+   wgrywa się go w Play Console.
 3. Apki sprawdzają ostatni Release najwyżej co 12 h. Gdy jest nowszy, na zakładce
    Ustawienia pojawia się kropka i przycisk „Pobierz” (link do APK z Release).
 
