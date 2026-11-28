@@ -47,7 +47,7 @@ Nieoficjalna aplikacja. Nie jest powiązana ze szkołą ani z firmą EduPage. Po
 ```
 
 **Kategoria:** Edukacja. **Tagi:** plan lekcji, szkoła.
-**Kontakt:** adres e-mail dewelopera (wymagany) i strona: `https://github.com/MILKv2/EPlan`.
+**Kontakt:** `milk@milkthe.dev` (ten sam co w polityce prywatności), strona: `https://github.com/MILKv2/EPlan`.
 **Polityka prywatności:** `https://github.com/MILKv2/EPlan/blob/main/docs/privacy.md`
 
 ### Grafiki
@@ -77,7 +77,7 @@ Zrzuty z `docs/screenshots/` (360 × 760 dp) są za wysokie dla Play (ponad 2:1)
   - Czy aplikacja zbiera lub udostępnia dane? **Tak** (tylko przy włączonych powiadomieniach).
   - Szyfrowanie przesyłanych danych: **tak** (HTTPS).
   - Usuwanie danych: brak kont; dane znikają po odinstalowaniu lub wyczyszczeniu danych
-    aplikacji, tematy powiadomień po ich wyłączeniu.
+    aplikacji, tematy powiadomień po ich wyłączeniu; prośby o usunięcie: `milk@milkthe.dev`.
   - **Identyfikatory urządzenia lub inne**: zbierane, nieudostępniane, opcjonalne,
     cel: działanie aplikacji (identyfikator Firebase Cloud Messaging).
   - **Dane osobowe → imię i nazwisko**: zbierane, nieudostępniane, opcjonalne,
