@@ -1,6 +1,7 @@
 package dev.milkthe.qbitplan.data
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.ui.substitutions.SubstitutionsViewModel
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +46,7 @@ class StartDayTest {
         prefs = UserPreferencesRepository(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "test.preferences_pb") })
         repo.refresh(listOf(tuesday))
         // 1at, 2. Grupa: last lesson that takes place on 2026-11-24 ends at 14:40 (period 9 is cancelled).
-        prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa")))
         Unit
     }
 

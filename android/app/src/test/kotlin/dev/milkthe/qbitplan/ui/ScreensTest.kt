@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.VersionPin
 import dev.milkthe.qbitplan.core.update.AppVersion
 import dev.milkthe.qbitplan.core.update.ReleaseResponse
@@ -100,7 +101,7 @@ class ScreensTest {
     @After
     fun tearDown() = scope.cancel()
 
-    private fun student() = runBlocking { prefs.setStudent("-210", "1at", setOf("2. Grupa")) }
+    private fun student() = runBlocking { prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa"))) }
 
     private fun teacher() = runBlocking { prefs.setTeacher("-161", "AG", "Anna Grzebień") }
 

@@ -5,6 +5,7 @@ import dev.milkthe.qbitplan.core.edupage.RegularTimetableParser
 import dev.milkthe.qbitplan.core.edupage.SubstitutionsParser
 import dev.milkthe.qbitplan.core.model.Change
 import dev.milkthe.qbitplan.core.model.DaySubstitutions
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.PeriodRange
 import dev.milkthe.qbitplan.core.model.Timetable
 import java.time.LocalDate
@@ -26,7 +27,7 @@ class DayPlannerTest {
 
     @Test
     fun `student of group 2 sees split substitution, cancelled religion`() {
-        val plan = planner.forClass(classId("1at"), tuesday, subs("2026-11-24"), selectedGroupNames = setOf("2. Grupa"))
+        val plan = planner.forClass(classId("1at"), tuesday, subs("2026-11-24"), groups = GroupSelection(setOf("2. Grupa")))
 
         val p4 = plan.single { it.periods == PeriodRange.single(4) }
         assertEquals(LessonStatus.CHANGED, p4.status)
@@ -53,8 +54,20 @@ class DayPlannerTest {
     }
 
     @Test
+    fun `student attending neither religion nor ethics sees neither`() {
+        val neither = GroupSelection(setOf("2. Grupa"), skipped = setOf("Religia", "Etyka"))
+        for (substitutions in listOf(null, subs("2026-11-24"))) {
+            val plan = planner.forClass(classId("1at"), tuesday, substitutions, groups = neither)
+            assertTrue(plan.none { it.subject.old in setOf("religia", "etyka") || it.subject.new in setOf("religia", "etyka") })
+            assertTrue(plan.none { it.groupNames == listOf("1. Grupa") }, "other divisions still filtered")
+        }
+        val all = planner.forClass(classId("1at"), tuesday, null)
+        assertTrue(all.any { it.subject.old == "religia" }, "fixture has religion on Tuesday")
+    }
+
+    @Test
     fun `student of group 1 keeps the double lesson unchanged`() {
-        val plan = planner.forClass(classId("1at"), tuesday, subs("2026-11-24"), selectedGroupNames = setOf("1. Grupa"))
+        val plan = planner.forClass(classId("1at"), tuesday, subs("2026-11-24"), groups = GroupSelection(setOf("1. Grupa")))
         val peie = plan.single { it.subject.old == "PEiE" }
         assertEquals(PeriodRange(4, 5), peie.periods)
         assertEquals(LessonStatus.NORMAL, peie.status)

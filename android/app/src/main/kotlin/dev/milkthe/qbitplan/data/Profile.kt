@@ -1,5 +1,6 @@
 package dev.milkthe.qbitplan.data
 
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.SchoolClass
 import dev.milkthe.qbitplan.core.model.Teacher
 import dev.milkthe.qbitplan.core.model.Timetable
@@ -7,7 +8,7 @@ import dev.milkthe.qbitplan.data.prefs.UserMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferences
 
 sealed interface Profile {
-    data class Student(val schoolClass: SchoolClass, val groupNames: Set<String>) : Profile
+    data class Student(val schoolClass: SchoolClass, val groups: GroupSelection) : Profile
     data class TeacherProfile(val teacher: Teacher, val fullName: String?) : Profile
 }
 
@@ -15,7 +16,7 @@ sealed interface Profile {
 fun UserPreferences.resolve(tt: Timetable): Profile? = when (mode) {
     UserMode.STUDENT -> {
         val cls = classId?.let { tt.classes[it] } ?: classShort?.let { tt.classByShort(it) }
-        cls?.let { Profile.Student(it, groupNames) }
+        cls?.let { Profile.Student(it, GroupSelection(groupNames, skippedGroupNames)) }
     }
     UserMode.TEACHER -> {
         val teacher = teacherId?.let { tt.teachers[it] }

@@ -39,7 +39,7 @@ class BadgeViewModel @Inject constructor(
         val lessons = when (val profile = prefs.resolve(timetable)) {
             is Profile.Student -> planner.forClass(
                 profile.schoolClass.id, today, day,
-                selectedGroupNames = profile.groupNames.takeIf { prefs.onlyMyGroups && it.isNotEmpty() },
+                groups = profile.groups.takeIf { prefs.onlyMyGroups && !it.isEmpty },
             )
             is Profile.TeacherProfile -> planner.forTeacher(profile.teacher.id, profile.fullName, today, day)
             null -> emptyList()

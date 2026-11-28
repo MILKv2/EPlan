@@ -44,7 +44,7 @@ class PlanDayTracker @Inject constructor(
     val days: StateFlow<PlanDays?> = combine(
         resumes,
         repository.timetable.map { it?.fetchedAt }.distinctUntilChanged(),
-        preferences.preferences.map { listOf(it.mode, it.classId, it.groupNames, it.teacherId, it.onlyMyGroups) }.distinctUntilChanged(),
+        preferences.preferences.map { listOf(it.mode, it.classId, it.groupNames, it.skippedGroupNames, it.teacherId, it.onlyMyGroups) }.distinctUntilChanged(),
     ) { resumeCount, _, _ -> resumeCount }
         .transformLatest { resumeCount ->
             var resumed = resumeCount != seenResumes

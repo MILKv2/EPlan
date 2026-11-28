@@ -3,6 +3,7 @@ package dev.milkthe.qbitplan.core.schedule
 import dev.milkthe.qbitplan.core.model.Change
 import dev.milkthe.qbitplan.core.model.Classroom
 import dev.milkthe.qbitplan.core.model.DaySubstitutions
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.PeriodRange
 import dev.milkthe.qbitplan.core.model.Substitution
 import dev.milkthe.qbitplan.core.model.SubstitutionType
@@ -29,21 +30,22 @@ class DayPlanner(private val tt: Timetable) {
         tt.classrooms.values.filter { it.id in used }.sortedBy { it.short }
     }
 
-    /** [selectedGroupNames] `null` = all groups of the class. */
+    /** [groups] `null` = all groups of the class. */
     fun forClass(
         classId: String,
         date: LocalDate,
         substitutions: DaySubstitutions?,
-        selectedGroupNames: Set<String>? = null,
+        groups: GroupSelection? = null,
         weekIndex: Int? = null,
     ): List<PlannedLesson> {
         val slots = resolveClass(classId, date, substitutions, weekIndex)
-        if (selectedGroupNames == null) return merge(slots)
-        val selectedIds = tt.groupIdsForNames(classId, selectedGroupNames)
+        if (groups == null) return merge(slots)
+        val selectedIds = tt.groupIdsForNames(classId, groups.picked)
+        val skippedIds = tt.groupIdsForNames(classId, groups.skipped)
         return merge(
             slots.filter { slot ->
-                if (slot.lesson != null) tt.isForClass(slot.lesson, classId, selectedIds)
-                else isRelevantGroupNames(classId, slot.groupNames, selectedIds)
+                if (slot.lesson != null) tt.isForClass(slot.lesson, classId, selectedIds, skippedIds)
+                else isRelevantGroupNames(classId, slot.groupNames, selectedIds, skippedIds)
             },
         )
     }
@@ -337,13 +339,13 @@ class DayPlanner(private val tt: Timetable) {
     private fun lessonWideGroupNames(lesson: TimetableLesson): Set<String> =
         lesson.groupIds.mapNotNull { tt.groups[it] }.filter { !it.entireClass }.map { it.name }.toSet()
 
-    private fun isRelevantGroupNames(classId: String, names: List<String>, selectedIds: Set<String>): Boolean {
+    private fun isRelevantGroupNames(classId: String, names: List<String>, selectedIds: Set<String>, skippedIds: Set<String>): Boolean {
         if (names.isEmpty()) return true
         val classGroups = tt.groups.values.filter { it.classId == classId }
         val rowGroups = classGroups.filter { it.name in names }
         if (rowGroups.isEmpty() || rowGroups.any { it.entireClass }) return true
-        val selectedDivisions = selectedIds.mapNotNull { tt.groups[it]?.division }.toSet()
-        return rowGroups.any { it.id in selectedIds || it.division !in selectedDivisions }
+        val decidedDivisions = (selectedIds + skippedIds).mapNotNull { tt.groups[it]?.division }.toSet()
+        return rowGroups.any { it.id in selectedIds || it.division !in decidedDivisions }
     }
 
     private fun String?.splitRooms(): List<String> =

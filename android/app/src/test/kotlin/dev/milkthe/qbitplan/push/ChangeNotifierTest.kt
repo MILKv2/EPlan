@@ -1,6 +1,7 @@
 package dev.milkthe.qbitplan.push
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.schedule.LessonStatus
 import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
@@ -58,7 +59,7 @@ class ChangeNotifierTest {
 
     @Test
     fun `a student hears about their groups' changes once`() = runBlocking {
-        prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa")))
         notifier.onDayChanged(tuesday)
         val (date, changes) = alerts.shown.single()
         val lessons = changes.map { it.lesson }
@@ -91,7 +92,7 @@ class ChangeNotifierTest {
 
     @Test
     fun `a substitute swapped later in the day is news to the class`() = runBlocking {
-        prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa")))
         notifier.onDayChanged(tuesday)
         api.editSubstitutions = { it.replace("Anna Grzebień", "Dorota Dziadosz") }
         notifier.onDayChanged(tuesday)
@@ -102,7 +103,7 @@ class ChangeNotifierTest {
 
     @Test
     fun `offline gives a plain notice instead of details`() = runBlocking {
-        prefs.setStudent("-210", "1at", emptySet())
+        prefs.setStudent("-210", "1at", GroupSelection(emptySet()))
         api.offline = true
         notifier.onDayChanged(tuesday)
         assertEquals(listOf(tuesday), alerts.unspecified)
@@ -111,7 +112,7 @@ class ChangeNotifierTest {
 
     @Test
     fun `quiet weekend and switched-off notifications stay silent`() = runBlocking {
-        prefs.setStudent("-210", "1at", emptySet())
+        prefs.setStudent("-210", "1at", GroupSelection(emptySet()))
         clock.now = LocalDateTime.of(2026, 11, 22, 18, 0).atZone(zone).toInstant() // Sunday
         notifier.onDayChanged(tuesday)
         clock.now = LocalDateTime.of(2026, 11, 23, 18, 0).atZone(zone).toInstant()

@@ -5,6 +5,7 @@ import android.app.Application
 import android.app.NotificationManager
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.test.core.app.ApplicationProvider
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
@@ -54,7 +55,7 @@ class NotificationAlertsTest {
         val prefs = UserPreferencesRepository(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "test.preferences_pb") })
         repo.refresh(substitutionDates = listOf(tuesday))
         prefs.setNotificationsEnabled(true)
-        prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa")))
         notifier = ChangeNotifier(repo, prefs, NotificationAlerts(app, clock), clock)
     }
 

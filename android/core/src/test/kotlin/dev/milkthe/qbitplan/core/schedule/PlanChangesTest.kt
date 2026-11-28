@@ -3,6 +3,7 @@ package dev.milkthe.qbitplan.core.schedule
 import dev.milkthe.qbitplan.core.Fixtures
 import dev.milkthe.qbitplan.core.edupage.RegularTimetableParser
 import dev.milkthe.qbitplan.core.edupage.SubstitutionsParser
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.Timetable
 import java.time.LocalDate
 import kotlin.test.Test
@@ -19,7 +20,7 @@ class PlanChangesTest {
 
     @Test
     fun `newly published substitutions are the changes, in the student's groups`() {
-        val groups = setOf("2. Grupa")
+        val groups = GroupSelection(setOf("2. Grupa"))
         val changes = changedLessons(
             before = planner.forClass(classId, tuesday, null, groups),
             after = planner.forClass(classId, tuesday, subs, groups),
@@ -30,7 +31,7 @@ class PlanChangesTest {
 
     @Test
     fun `the other group hears only about what touches it`() {
-        val groups = setOf("1. Grupa")
+        val groups = GroupSelection(setOf("1. Grupa"))
         val changes = changedLessons(planner.forClass(classId, tuesday, null, groups), planner.forClass(classId, tuesday, subs, groups))
         assertTrue(changes.none { it.periods.first in 4..5 })
     }

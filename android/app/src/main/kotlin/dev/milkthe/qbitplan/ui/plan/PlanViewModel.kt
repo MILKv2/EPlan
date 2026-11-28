@@ -154,7 +154,7 @@ class PlanViewModel @Inject constructor(
             val lessons = when (profile) {
                 is Profile.Student -> planner.forClass(
                     profile.schoolClass.id, date, subs?.value,
-                    selectedGroupNames = profile.groupNames.takeIf { p.onlyMyGroups && it.isNotEmpty() },
+                    groups = profile.groups.takeIf { p.onlyMyGroups && !it.isEmpty },
                 )
                 is Profile.TeacherProfile -> planner.forTeacher(profile.teacher.id, profile.fullName, date, subs?.value)
                 null -> emptyList()

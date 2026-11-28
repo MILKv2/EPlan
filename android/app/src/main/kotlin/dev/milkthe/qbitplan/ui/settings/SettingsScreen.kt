@@ -150,7 +150,7 @@ private fun PillButton(text: String, icon: ImageVector, onClick: () -> Unit, loa
 
 @Composable
 private fun profileText(profile: Profile?): String = when (profile) {
-    is Profile.Student -> listOf(profile.schoolClass.short, profile.groupNames.sorted().joinToString(", ").ifEmpty { stringResource(R.string.plan_whole_class) }).joinToString(" · ")
+    is Profile.Student -> listOf(profile.schoolClass.short, profile.groups.picked.sorted().joinToString(", ").ifEmpty { stringResource(R.string.plan_whole_class) }).joinToString(" · ")
     is Profile.TeacherProfile -> listOfNotNull(profile.teacher.short, profile.fullName).joinToString(" · ")
     null -> stringResource(R.string.settings_profile_unknown)
 }
