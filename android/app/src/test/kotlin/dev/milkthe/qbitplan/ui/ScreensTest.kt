@@ -201,7 +201,7 @@ class ScreensTest {
     fun settings() {
         student()
         show { SettingsScreen(onAbout = {}, onEditProfile = {}, onVersion = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
-        waitForText("Ostatnia synchronizacja")
+        waitForText("Automatycznie · listopad2026_RC3")
         capture("settings")
     }
 

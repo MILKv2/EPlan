@@ -24,7 +24,7 @@ import dev.milkthe.qbitplan.ui.common.SettingsHeader
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 import java.time.format.DateTimeFormatter
 
-private val ValidFrom = DateTimeFormatter.ofPattern("EEEE d.MM.yyyy", PolishLocale)
+private val ValidFrom = DateTimeFormatter.ofPattern("d.MM.yyyy", PolishLocale)
 
 /** Automatic (by date) or one published version, pinned until a newer one appears. */
 @Composable
