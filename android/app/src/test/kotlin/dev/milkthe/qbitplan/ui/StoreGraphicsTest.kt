@@ -64,7 +64,7 @@ import java.time.LocalDateTime
 import java.time.ZoneId
 
 /**
- * Google Play listing graphics (docs/play/README.md): the icon, the feature graphic and phone
+ * Google Play listing graphics: the icon, the feature graphic and phone
  * screenshots at 1080 × 1920, since the screen tests' 360 × 760 dp is taller than Play's 2:1 limit.
  * Written to build/screenshots with `-Proborazzi.record=true`.
  */
