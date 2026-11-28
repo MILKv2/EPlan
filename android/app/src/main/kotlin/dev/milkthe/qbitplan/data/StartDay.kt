@@ -2,6 +2,7 @@ package dev.milkthe.qbitplan.data
 
 import dev.milkthe.qbitplan.core.schedule.DayPlanner
 import dev.milkthe.qbitplan.core.schedule.isSchoolDay
+import dev.milkthe.qbitplan.core.schedule.nextPlanDayChange
 import dev.milkthe.qbitplan.core.schedule.planStartDay
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import kotlinx.coroutines.Dispatchers
@@ -9,8 +10,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import javax.inject.Inject
+
+/** [start]: the day the plan opens on; [nextChange]: when [start] or [today] may change next. */
+data class StartDayInfo(val today: LocalDate, val start: LocalDate, val nextChange: LocalDateTime)
 
 /** The day the plan and the substitutions open on: today until the profile's last lesson is over, then the next school day. */
 class StartDay @Inject constructor(
@@ -18,9 +23,13 @@ class StartDay @Inject constructor(
     private val preferences: UserPreferencesRepository,
     private val clock: Clock,
 ) {
-    suspend operator fun invoke(): LocalDate {
+    suspend operator fun invoke(): LocalDate = info().start
+
+    suspend fun info(): StartDayInfo {
         val today = LocalDate.now(clock)
-        return planStartDay(today, LocalTime.now(clock), lastLessonEnd(today))
+        val now = LocalTime.now(clock)
+        val end = lastLessonEnd(today)
+        return StartDayInfo(today, planStartDay(today, now, end), nextPlanDayChange(today, now, end))
     }
 
     /** A day of only cancelled lessons still ends after the last of them. */

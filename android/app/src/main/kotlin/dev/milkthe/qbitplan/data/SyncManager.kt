@@ -1,5 +1,7 @@
 package dev.milkthe.qbitplan.data
 
+import dev.milkthe.qbitplan.core.model.isPinValid
+import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import dev.milkthe.qbitplan.di.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +25,8 @@ data class SyncState(val refreshing: Boolean = false, val error: Throwable? = nu
 @Singleton
 class SyncManager @Inject constructor(
     private val repository: SchoolRepository,
+    private val preferences: UserPreferencesRepository,
+    private val startDay: StartDay,
     private val clock: Clock,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
@@ -33,7 +37,18 @@ class SyncManager @Inject constructor(
     val state: StateFlow<SyncState> = combine(running, error) { count, e -> SyncState(count > 0, e) }
         .stateIn(scope, SharingStarted.Eagerly, SyncState())
 
-    fun refresh() = launchTracked { repository.refresh() }
+    fun refresh() = launchTracked { refreshNow() }
+
+    /** A full refresh for the day the plan opens on, honouring a version pinned in Settings. */
+    suspend fun refreshNow(): RefreshResult {
+        val pin = preferences.preferences.first().versionPin
+        val result = repository.refresh(versionDate = startDay(), pin = pin)
+        if (pin != null && result == RefreshResult.Success) {
+            val current = repository.versions.first()
+            if (current != null && !current.versions.isPinValid(pin, current.schoolYear)) preferences.setVersionPin(null)
+        }
+        return result
+    }
 
     fun refreshIfStale(maxAge: Duration = STALE_AFTER) {
         scope.launch {

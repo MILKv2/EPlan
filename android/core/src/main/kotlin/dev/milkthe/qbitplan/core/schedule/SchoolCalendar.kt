@@ -2,6 +2,7 @@ package dev.milkthe.qbitplan.core.schedule
 
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.TemporalAdjusters
 
@@ -19,6 +20,11 @@ fun planStartDay(today: LocalDate, now: LocalTime, lastLessonEnd: LocalTime?): L
     lastLessonEnd != null && now >= lastLessonEnd -> nextSchoolDay(today)
     else -> today
 }
+
+/** When [planStartDay] can next give another answer: the end of today's last lesson, else midnight. */
+fun nextPlanDayChange(today: LocalDate, now: LocalTime, lastLessonEnd: LocalTime?): LocalDateTime =
+    if (today.isSchoolDay() && lastLessonEnd != null && now < lastLessonEnd) today.atTime(lastLessonEnd)
+    else today.plusDays(1).atStartOfDay()
 
 fun upcomingSchoolDays(from: LocalDate, count: Int): List<LocalDate> =
     generateSequence(nearestSchoolDay(from)) { nextSchoolDay(it) }.take(count).toList()

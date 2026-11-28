@@ -50,7 +50,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, onVersion: () -> Unit, vm: SettingsViewModel = hiltViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     val colors = QbitTheme.colors
     androidx.compose.foundation.layout.Column(
@@ -96,6 +96,14 @@ fun SettingsScreen(onAbout: () -> Unit, onEditProfile: () -> Unit, vm: SettingsV
         SwitchRow(stringResource(R.string.settings_quiet), stringResource(R.string.settings_quiet_desc), state.prefs.quietWeekends, { vm.setQuietWeekends(it) }, enabled = state.prefs.notificationsEnabled)
 
         SettingsHeader(stringResource(R.string.settings_data))
+        SettingsRow(
+            title = stringResource(R.string.settings_version),
+            subtitle = when (val v = state.version) {
+                null -> stringResource(R.string.settings_version_unknown)
+                else -> stringResource(if (v.pinned) R.string.settings_version_pinned else R.string.settings_version_auto, v.name)
+            },
+            onClick = onVersion,
+        ) { Chevron() }
         val last = state.lastRefresh?.let {
             val local = it.atZone(ZoneId.systemDefault())
             if (local.toLocalDate() == LocalDate.now()) stringResource(R.string.settings_today_at, local.toLocalTime().text()) else it.text()

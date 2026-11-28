@@ -30,12 +30,15 @@ class FakeEdupageApi : EdupageApi {
     var offline = false
     var brokenTimetable = false
     val emptyYears = mutableSetOf<Int>()
+    /** A full getTTViewerData response to serve instead of the minimal one built from [defaultNum]. */
+    var versionsBody: String? = null
     /** Edits the served substitutions page, e.g. to change a row after it was first fetched. */
     var editSubstitutions: (String) -> String = { it }
 
     override suspend fun fetchTimetableVersions(schoolYear: Int): String {
         if (offline) throw IOException("offline")
         versionCalls += schoolYear
+        versionsBody?.let { if (schoolYear !in emptyYears) return it }
         val num = if (schoolYear in emptyYears) "" else defaultNum
         return """{"r":{"regular":{"default_num":"$num","timetables":[]}}}"""
     }

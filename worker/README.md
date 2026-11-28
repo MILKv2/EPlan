@@ -13,6 +13,9 @@ telefony, których plan się zmienił. Bez własnego serwera i bez bazy danych u
    `naucz-<imie-nazwisko>` (do 5 topików w jednej wiadomości). Push zawiera **tylko datę**.
 5. Telefon pobiera ten dzień sam, porównuje swój plan przed i po (z grupami ucznia) i pokazuje
    powiadomienie z tym, co zmieniło się u niego. Jeśli nic, nie pokazuje niczego.
+6. O :00 i :30 pobiera listę wersji planu. Najnowszą widoczną zapisuje w KV (`timetable`);
+   gdy pojawi się nowsza, wysyła jeden push na topik `plan-lekcji` (`type=timetable`,
+   `ttNum`, `validFrom`). Między 21:00 a 7:00 czeka do rana. Pierwszy odczyt tylko zapisuje.
 
 Nazwy topików liczą tak samo worker (`src/topics.ts`) i apka (`PushTopics.kt`); obie strony
 sprawdzają to na `../fixtures/topics.json`.
@@ -26,6 +29,7 @@ src/changes.ts   skróty per topik i lista zmienionych topików
 src/topics.ts    nazwy topików FCM
 src/fcm.ts       FCM HTTP v1: JWT konta serwisowego → token → wiadomość
 src/calendar.ts  daty po polsku (Europe/Warsaw), dni szkolne
+src/timetable.ts lista wersji planu: najnowsza widoczna, godziny ciszy
 test/            testy na ../fixtures (node --test)
 ```
 

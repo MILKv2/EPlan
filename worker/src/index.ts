@@ -1,10 +1,13 @@
 // Every 5 minutes: fetch the watched days' substitutions, compare per-topic fingerprints with the
 // last run, and wake the phones subscribed to changed topics. The push carries only the date;
 // the app fetches the day itself and works out what changed in its own plan.
+// Twice an hour also: announce a newly published timetable version on the timetable topic.
 import { watchedDates } from './calendar.ts';
 import { changedTopics, fingerprints, type Fingerprints } from './changes.ts';
 import { fetchSubstitutionsHtml, parseSubstitutions } from './edupage.ts';
 import { accessToken, parseServiceAccount, sendToTopics, TOPICS_PER_MESSAGE, type ServiceAccount } from './fcm.ts';
+import { fetchVersions, isNewer, isQuietHour, newestVersion, schoolYear, type Version } from './timetable.ts';
+import { TIMETABLE_TOPIC } from './topics.ts';
 
 /** The part of Workers KV this worker uses. */
 export interface KVNamespace {
@@ -21,9 +24,11 @@ export interface Env {
 type Log = Pick<Console, 'log' | 'error'>;
 type Notify = (topics: string[], date: string) => Promise<void>;
 
-// Free plan: 50 subrequests per run. 3 fetches + 1 token leave room for this many sends;
-// topics beyond it keep their old fingerprint and go out on the next run.
+// Free plan: 50 subrequests per run. 3 fetches + 1 token + the timetable check (1 fetch, 1 send)
+// leave room for this many sends; topics beyond it keep their old fingerprint and go out on the next run.
 const MAX_SENDS_PER_RUN = 40;
+
+const TIMETABLE_KEY = 'timetable';
 
 export default {
   async scheduled(controller: { scheduledTime: number }, env: Env): Promise<void> {
@@ -60,6 +65,46 @@ export async function run(
       log.error(`${date}: ${message(error)}`);
     }
   }
+
+  // Versions change every few weeks: checking at :00 and :30 is enough.
+  if (now.getUTCMinutes() % 30 < 5) {
+    const announce = async (version: Version) => {
+      const token = await accessToken(account, fetchImpl, now.getTime());
+      await sendToTopics(
+        { token, projectId: account.project_id, topics: [TIMETABLE_TOPIC], data: { type: 'timetable', ttNum: version.ttNum, validFrom: version.validFrom }, collapseKey: 'timetable' },
+        fetchImpl,
+      );
+    };
+    try {
+      await checkTimetable(env, now, announce, fetchImpl, log);
+    } catch (error) {
+      log.error(`timetable: ${message(error)}`);
+    }
+  }
+}
+
+/**
+ * Remembers the newest published version and announces a newer one, once. The first sighting is
+ * only stored; at night nothing is stored either, so the morning run announces it.
+ */
+export async function checkTimetable(
+  env: Env,
+  now: Date,
+  announce: (version: Version) => Promise<void>,
+  fetchImpl: typeof fetch,
+  log: Log,
+): Promise<void> {
+  const year = schoolYear(now);
+  const current = newestVersion(await fetchVersions(year, fetchImpl), year);
+  if (current === null) return;
+  const previous = (await env.STATE.get(TIMETABLE_KEY, 'json')) as Version | null;
+  if (previous !== null && previous.ttNum === current.ttNum) return;
+  if (previous !== null && isNewer(current, previous)) {
+    if (isQuietHour(now)) return;
+    await announce(current);
+    log.log(`timetable: announced ${current.ttNum} from ${current.validFrom}`);
+  }
+  await env.STATE.put(TIMETABLE_KEY, JSON.stringify(current));
 }
 
 /** Returns the number of messages sent. */

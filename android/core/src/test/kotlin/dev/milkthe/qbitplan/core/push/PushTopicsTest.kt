@@ -16,7 +16,11 @@ class PushTopicsTest {
         for (vector in vectors) {
             val name = vector.getValue("name").jsonPrimitive.content
             val expected = vector.getValue("topic").jsonPrimitive.content
-            val actual = if (vector.getValue("kind").jsonPrimitive.content == "class") PushTopics.forClass(name) else PushTopics.forTeacher(name)
+            val actual = when (vector.getValue("kind").jsonPrimitive.content) {
+                "class" -> PushTopics.forClass(name)
+                "teacher" -> PushTopics.forTeacher(name)
+                else -> PushTopics.TIMETABLE
+            }
             assertEquals(expected, actual, name)
         }
     }

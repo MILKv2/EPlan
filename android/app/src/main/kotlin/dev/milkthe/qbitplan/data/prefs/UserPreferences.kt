@@ -1,5 +1,7 @@
 package dev.milkthe.qbitplan.data.prefs
 
+import dev.milkthe.qbitplan.core.model.VersionPin
+
 enum class UserMode { STUDENT, TEACHER }
 
 enum class ThemeMode { SYSTEM, LIGHT, DARK }
@@ -23,8 +25,10 @@ data class UserPreferences(
     val quietWeekends: Boolean = true,
     /** Hide lessons of groups the student isn't in. */
     val onlyMyGroups: Boolean = true,
-    /** FCM topic this install is subscribed to; `null` = none. */
-    val pushTopic: String? = null,
+    /** FCM topics this install is subscribed to. */
+    val pushTopics: Set<String> = emptySet(),
+    /** Timetable version chosen by hand in Settings; `null` = automatic. */
+    val versionPin: VersionPin? = null,
 ) {
     val isOnboarded: Boolean
         get() = when (mode) {

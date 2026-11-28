@@ -8,5 +8,6 @@
   { "kind": "teacher", "name": "Grzegorz Półchłopek", "topic": "naucz-grzegorz-polchlopek" },
   { "kind": "teacher", "name": "Wojciech Książkiewicz", "topic": "naucz-wojciech-ksiazkiewicz" },
   { "kind": "teacher", "name": "Żaneta Źdźbło", "topic": "naucz-zaneta-zdzblo" },
-  { "kind": "teacher", "name": "  Anna   Grzebień ", "topic": "naucz-anna-grzebien" }
+  { "kind": "teacher", "name": "  Anna   Grzebień ", "topic": "naucz-anna-grzebien" },
+  { "kind": "timetable", "name": "new timetable version", "topic": "plan-lekcji" }
 ]

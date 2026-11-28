@@ -34,6 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CalendarViewWeek
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Edit
@@ -53,6 +54,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.key
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -92,10 +95,10 @@ import dev.milkthe.qbitplan.ui.theme.style
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
-/** [onEditProfile]: the profile editor; [onOpenSettings]: the Settings tab. */
+/** [onEditProfile]: the profile editor; [onOpenSettings]: the Settings tab; [onOpenVersion]: the timetable version picker. */
 @Composable
-fun PlanScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, vm: PlanViewModel = hiltViewModel()) {
-    val menu = remember(onEditProfile, onOpenSettings, vm) { PlanMenuActions(onEditProfile, onOpenSettings, vm::setOnlyMyGroups) }
+fun PlanScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, onOpenVersion: () -> Unit = {}, vm: PlanViewModel = hiltViewModel()) {
+    val menu = remember(onEditProfile, onOpenSettings, onOpenVersion, vm) { PlanMenuActions(onEditProfile, onOpenSettings, onOpenVersion, vm::setOnlyMyGroups) }
     val header by vm.header.collectAsStateWithLifecycle()
     val week by vm.week.collectAsStateWithLifecycle()
     val mode by vm.mode.collectAsStateWithLifecycle()
@@ -108,13 +111,14 @@ fun PlanScreen(onEditProfile: () -> Unit, onOpenSettings: () -> Unit, vm: PlanVi
                 PlanTopBar(header, isWeek, menu, vm::toggleWeek)
                 LoadingBox()
             }
-            else -> PlanContent(vm, w, header, isWeek, weekend, menu)
+            // A new week gets a new pager, opened on the week's start day.
+            else -> key(w.dates.first()) { PlanContent(vm, w, header, isWeek, weekend, menu) }
         }
     }
 }
 
 @Immutable
-private class PlanMenuActions(val onEditProfile: () -> Unit, val onOpenSettings: () -> Unit, val onOnlyMyGroups: (Boolean) -> Unit)
+private class PlanMenuActions(val onEditProfile: () -> Unit, val onOpenSettings: () -> Unit, val onOpenVersion: () -> Unit, val onOnlyMyGroups: (Boolean) -> Unit)
 
 @Composable
 private fun PlanTopBar(header: PlanHeader, isWeek: Boolean, menu: PlanMenuActions, onToggleWeek: () -> Unit) {
@@ -149,6 +153,9 @@ private fun ColumnScope.PlanContent(
     val pager = rememberPagerState(initialPage = week.initialPage) { week.dates.size }
     val scope = rememberCoroutineScope()
     var collapsed by remember { mutableStateOf(false) }
+    // The start day moved within the week (last lesson over); the view model only moves it when the user hasn't swiped away.
+    LaunchedEffect(week.initialPage) { if (pager.currentPage != week.initialPage) pager.animateScrollToPage(week.initialPage) }
+    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect(vm::onPageSettled) }
 
     AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
         PlanTopBar(header, isWeek, menu, vm::toggleWeek)
@@ -166,8 +173,9 @@ private fun ColumnScope.PlanContent(
         )
     }
     AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             SyncLine(header.sync, header.lastRefresh, vm::refresh)
+            header.pinnedVersion?.let { PinnedVersionLine(it, menu.onOpenVersion) }
         }
     }
     Hairline()
@@ -183,15 +191,34 @@ private fun ColumnScope.PlanContent(
             vm.showDay()
             scope.launch { pager.scrollToPage(0) }
         })
-        isWeek -> WeekGrid(vm, week.dates, header.isTeacher, onPick = { index ->
+        isWeek -> WeekGrid(vm, week.dates, week.today, header.isTeacher, onPick = { index ->
             vm.showDay()
             scope.launch { pager.scrollToPage(index) }
         })
         else -> PullToRefreshBox(isRefreshing = header.sync.refreshing, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
             HorizontalPager(state = pager, key = { week.dates[it].toEpochDay() }, modifier = Modifier.fillMaxSize()) { page ->
-                DayPage(vm, week.dates[page], isCurrent = pager.currentPage == page, onCollapsed = { collapsed = it })
+                DayPage(vm, week.dates[page], isToday = week.dates[page] == week.today, isCurrent = pager.currentPage == page, onCollapsed = { collapsed = it })
             }
         }
+    }
+}
+
+/** A pinned version can go stale if the school edits it, so the plan says it isn't automatic. */
+@Composable
+private fun PinnedVersionLine(name: String, onClick: () -> Unit) {
+    val colors = QbitTheme.colors
+    Row(
+        Modifier
+            .padding(bottom = 6.dp)
+            .clip(CircleShape)
+            .background(colors.warning.soft)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(stringResource(R.string.plan_version_pinned, name), fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium, color = colors.warning.softForeground, style = MaterialTheme.typography.bodySmall)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, contentDescription = null, tint = colors.warning.softForeground, modifier = Modifier.size(14.dp))
     }
 }
 
@@ -262,7 +289,7 @@ private fun ProfileChip(profile: Profile?, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DayPage(vm: PlanViewModel, date: LocalDate, isCurrent: Boolean, onCollapsed: (Boolean) -> Unit) {
+private fun DayPage(vm: PlanViewModel, date: LocalDate, isToday: Boolean, isCurrent: Boolean, onCollapsed: (Boolean) -> Unit) {
     val state by remember(date) { vm.day(date) }.collectAsStateWithLifecycle()
     val scroll = rememberScrollState()
     val scrolled by remember { derivedStateOf { scroll.value > 28 } }
@@ -282,7 +309,7 @@ private fun DayPage(vm: PlanViewModel, date: LocalDate, isCurrent: Boolean, onCo
             }
         } else {
             Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(bottom = 16.dp)) {
-                Timeline(s.lessons, isToday = date == vm.today)
+                Timeline(s.lessons, isToday = isToday)
             }
         }
     }
@@ -301,7 +328,7 @@ private fun Weekend(monday: LocalDate, onShowMonday: () -> Unit) {
 }
 
 @Composable
-private fun WeekGrid(vm: PlanViewModel, dates: List<LocalDate>, isTeacher: Boolean, onPick: (Int) -> Unit) {
+private fun WeekGrid(vm: PlanViewModel, dates: List<LocalDate>, today: LocalDate, isTeacher: Boolean, onPick: (Int) -> Unit) {
     val states = dates.map { remember(it) { vm.day(it) }.collectAsStateWithLifecycle().value }
     val ready = states.filterIsInstance<DayPlanState.Ready>()
     if (ready.size < states.size) {
@@ -318,20 +345,20 @@ private fun WeekGrid(vm: PlanViewModel, dates: List<LocalDate>, isTeacher: Boole
             Row(Modifier.fillMaxWidth().background(colors.background).padding(vertical = 6.dp)) {
                 Spacer(Modifier.width(40.dp))
                 dates.forEachIndexed { i, date ->
-                    val today = date == vm.today
+                    val isToday = date == today
                     Column(
                         Modifier
                             .weight(1f)
                             .padding(horizontal = 2.dp)
                             .height(40.dp)
                             .clip(RoundedCornerShape(12.dp))
-                            .background(if (today) colors.accent.solid else colors.background)
+                            .background(if (isToday) colors.accent.solid else colors.background)
                             .clickable { onPick(i) },
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.Center,
                     ) {
-                        Text(date.dayOfWeekText(), fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium, color = if (today) colors.onAccent else colors.muted, style = MaterialTheme.typography.bodySmall)
-                        Text(date.dayOfMonth.toString(), fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, color = if (today) colors.onAccent else colors.foreground, style = MaterialTheme.typography.bodyMedium)
+                        Text(date.dayOfWeekText(), fontSize = 11.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium, color = if (isToday) colors.onAccent else colors.muted, style = MaterialTheme.typography.bodySmall)
+                        Text(date.dayOfMonth.toString(), fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.SemiBold, color = if (isToday) colors.onAccent else colors.foreground, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }

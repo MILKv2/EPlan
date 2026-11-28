@@ -249,4 +249,26 @@
     <string name="push_back_to_plan">znów zgodnie z planem</string>
     <string name="push_cover_dropped">już nie zastępujesz</string>
     <string name="push_dropped">zniknęła z planu</string>
+
+    <!-- Timetable version -->
+    <string name="settings_version">Wersja planu</string>
+    <string name="settings_version_auto">Automatycznie · %1$s</string>
+    <string name="settings_version_pinned">Wybrana ręcznie · %1$s</string>
+    <string name="settings_version_unknown">Automatycznie</string>
+    <string name="version_title">Wersja planu</string>
+    <string name="version_auto">Automatycznie (zalecane)</string>
+    <string name="version_auto_desc">Wersja obowiązująca w dniu, który pokazuje plan · teraz %1$s</string>
+    <string name="version_auto_desc_empty">Wersja obowiązująca w dniu, który pokazuje plan</string>
+    <string name="version_from">Obowiązuje od %1$s</string>
+    <string name="version_published">Opublikowane wersje</string>
+    <string name="version_hint">Wybierz wersję ręcznie tylko wtedy, gdy plan w aplikacji się nie zgadza. Gdy szkoła opublikuje nowszą wersję, wybór sam wróci na automatyczny.</string>
+    <string name="version_empty">Lista wersji pojawi się po synchronizacji.</string>
+    <string name="plan_version_pinned">Wybrana ręcznie wersja planu: %1$s</string>
+
+    <!-- New timetable push -->
+    <string name="push_timetable_channel">Nowy plan lekcji</string>
+    <string name="push_timetable_channel_desc">Gdy szkoła opublikuje nową wersję planu</string>
+    <string name="push_timetable_title">Nowy plan lekcji od %1$s</string>
+    <string name="push_timetable_text">Aplikacja pobrała już nowy plan. Dotknij, żeby go zobaczyć.</string>
+    <string name="push_timetable_text_offline">Otwórz aplikację, żeby pobrać nowy plan.</string>
 </resources>

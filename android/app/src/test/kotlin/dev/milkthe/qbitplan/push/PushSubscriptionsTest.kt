@@ -46,21 +46,24 @@ class PushSubscriptionsTest {
     @After
     fun tearDown() = scope.cancel()
 
-    private fun awaitTopic(topic: String?) = runBlocking { withTimeout(10_000) { prefs.preferences.first { it.pushTopic == topic } } }
+    private fun awaitTopics(vararg topics: String) = runBlocking { withTimeout(10_000) { prefs.preferences.first { it.pushTopics == topics.toSet() } } }
 
     @Test
     fun `follows the profile and the notifications switch`() = runBlocking {
         prefs.setNotificationsEnabled(true)
         prefs.setStudent("-210", "1at", emptySet())
-        awaitTopic("klasa-1at")
+        awaitTopics("klasa-1at", "plan-lekcji")
 
         prefs.setTeacher("-161", "AG", "Anna Grzebień")
-        awaitTopic("naucz-anna-grzebien")
+        awaitTopics("naucz-anna-grzebien", "plan-lekcji")
 
         prefs.setNotificationsEnabled(false)
-        awaitTopic(null)
+        awaitTopics()
 
-        assertEquals(listOf("+klasa-1at", "-klasa-1at", "+naucz-anna-grzebien", "-naucz-anna-grzebien"), subscriber.calls)
+        assertEquals(
+            listOf("+klasa-1at", "+plan-lekcji", "-klasa-1at", "+naucz-anna-grzebien", "-naucz-anna-grzebien", "-plan-lekcji"),
+            subscriber.calls,
+        )
     }
 
     @Test
@@ -69,6 +72,6 @@ class PushSubscriptionsTest {
         prefs.setStudent("-210", "1at", emptySet())
         prefs.setNotificationsEnabled(true)
         Thread.sleep(300)
-        assertEquals(null, prefs.preferences.first().pushTopic)
+        assertEquals(emptySet(), prefs.preferences.first().pushTopics)
     }
 }

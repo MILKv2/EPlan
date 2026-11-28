@@ -76,9 +76,10 @@ class StartDayTest {
     @Test
     fun `substitutions open on tomorrow after the last lesson`() {
         at(16, 0)
-        val vm = SubstitutionsViewModel(repo, prefs, SyncManager(repo, clock, scope), StartDay(repo, prefs, clock), clock)
+        val start = StartDay(repo, prefs, clock)
+        val vm = SubstitutionsViewModel(repo, prefs, SyncManager(repo, prefs, start, clock, scope), PlanDayTracker(start, repo, prefs, clock, scope), clock)
         val selected = runBlocking { withTimeout(15_000) { vm.selectedDate.filterNotNull().first() } }
         assertEquals(tuesday.plusDays(1), selected)
-        assertEquals(1, vm.quickDays.indexOf(selected))
+        assertEquals(1, vm.quickDays.value.days.indexOf(selected))
     }
 }

@@ -10,7 +10,7 @@ worker/             Cloudflare Worker: co 5 min sprawdza zastępstwa, push FCM, 
 docs/               edupage-api.md: opis endpointów EduPage; screenshots/: zrzuty do README
 fixtures/           zapisane odpowiedzi EduPage do testów (apka + worker)
 .github/workflows/  android.yml: nowa wersja w android/version.properties na main → APK → GitHub Release
-                    tests.yml: testy apki i workera (worker wdraża Cloudflare z main, zob. worker/README.md)
+                    tests.yml: testy apki i workera, raz na PR (worker wdraża Cloudflare z main, zob. worker/README.md)
 ```
 
 Apka pobiera dane bezpośrednio z EduPage, bez własnego backendu. Worker tylko wysyła
@@ -29,6 +29,13 @@ cd android
 ```
 
 Zrzuty w `docs/screenshots/` pochodzą z tego ostatniego polecenia.
+
+## CI
+
+`tests.yml` uruchamia testy raz na PR: przy otwarciu (albo ponownym otwarciu lub
+oznaczeniu jako gotowy), a nie przy każdym pushu. Żeby przetestować nowe commity
+w otwartym PR, dodaj etykietę `run tests` albo uruchom workflow ręcznie
+(Actions → Tests → Run workflow). Artefakt `screenshots` zawiera zrzuty wszystkich ekranów.
 
 ## Wydanie
 

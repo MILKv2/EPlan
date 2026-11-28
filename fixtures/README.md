@@ -7,6 +7,7 @@ pobrane 2026-11-23. Korzystają z nich testy apki (`android/`) i workera
 | plik | endpoint | co testuje |
 |---|---|---|
 | `ttviewer_2026.json` | `getTTViewerData` (rok 2026) | lista wersji, `default_num = 189` |
+| `ttviewer_2026-11-28.json` | 〃, pobrane 2026-11-28 00:47 | nowa wersja 190 (od 28.11) już domyślna, 189 i 188 nadal widoczne: wybór wersji po dacie, worker |
 | `regulartt_189.json` | `regularttGetData` (tt 189, od 2026-11-21) | plan stały wszystkich klas |
 | `substitutions/2026-11-23.json` | `getSubstViewerDayDataHtml` | zwykły dzień |
 | `substitutions/2026-11-24.json` | 〃 | przeniesienia (`Moved to/from period`), odwołania, grupy |

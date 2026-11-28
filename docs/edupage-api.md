@@ -26,14 +26,14 @@ POST /timetable/server/ttviewer.js?__func=getTTViewerData
 
 `__args[1]` to **rok szkolny** (2026 oznacza 2026/27). Bez niego dostajemy
 błąd. Dla zeszłego roku `default_num` jest pusty.
-Reguła: `rok = miesiąc >= 8 ? rok : rok - 1`; jeśli `default_num` wyjdzie
-pusty, ponów z rokiem o 1 mniejszym.
+Reguła: `rok = miesiąc >= 8 ? rok : rok - 1`; jeśli dla tego roku nie da się
+wybrać wersji (patrz niżej), ponów z rokiem o 1 mniejszym.
 
 ```jsonc
 {"r": {
   "current": {"allow": false},          // plan bieżący wyłączony w UI (patrz pkt 4)
   "regular": {
-    "default_num": "189",               // ← wersja do pobrania; zmienia się co 1-3 tyg.
+    "default_num": "189",               // wersja domyślna; szkoła przełącza ją ręcznie
     "timetables": [
       {"tt_num":"189","year":2026,"text":"listopad2026_RC3 (21.11. - 31.12.2026)",
        "datefrom":"2026-11-21","hidden":false}, …]   // historia wszystkich lat
@@ -41,8 +41,16 @@ pusty, ponów z rokiem o 1 mniejszym.
 }}
 ```
 
-`default_num` pobieramy przy **każdym** odświeżeniu. `datefrom` mówi, od kiedy
-wersja obowiązuje (do następnej).
+Listę pobieramy przy **każdym** odświeżeniu. `datefrom` mówi, od kiedy
+wersja obowiązuje (do następnej). Szkoła publikuje nową wersję kilka dni wcześniej
+(`hidden: false`), a `default_num` przełącza osobno, np. o północy w dniu `datefrom`.
+
+Apka (`VersionChoice.kt`) bierze najnowszą widoczną wersję danego roku z
+`datefrom` ≤ dzień, który pokazuje plan (po ostatniej lekcji: następny dzień szkolny),
+a `default_num` tylko gdy żadna nie pasuje. Ukryte wersje to szkice albo historia.
+W Ustawieniach można wybrać wersję ręcznie; wybór przestaje obowiązywać, gdy pojawi
+się nowsza wersja. Worker co pół godziny sprawdza tę listę i o nowej wersji
+powiadamia raz, rano (topik `plan-lekcji`).
 
 ## 2. Plan stały: `regularttGetData`
 
