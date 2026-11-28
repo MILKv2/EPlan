@@ -57,13 +57,16 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.key
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -149,29 +152,32 @@ private fun ColumnScope.PlanContent(
     val pager = rememberPagerState(initialPage = week.initialPage) { week.dates.size }
     val scope = rememberCoroutineScope()
     var collapsed by remember { mutableStateOf(false) }
+    var headerHeight by remember { mutableIntStateOf(0) }
     // The start day moved within the week (last lesson over); the view model only moves it when the user hasn't swiped away.
     LaunchedEffect(week.initialPage) { if (pager.currentPage != week.initialPage) pager.animateScrollToPage(week.initialPage) }
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect(vm::onPageSettled) }
 
-    AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-        PlanTopBar(header, isWeek, menu, vm::toggleWeek)
-    }
-    if (!isWeek) {
-        DaySelector(
-            days = chips.ifEmpty { week.chips },
-            position = pager.currentPage + pager.currentPageOffsetFraction,
-            onSelect = { index ->
-                vm.showDay()
-                scope.launch { pager.animateScrollToPage(index) }
-            },
-            collapsed = collapsed,
-            modifier = Modifier.padding(vertical = if (collapsed) 8.dp else 0.dp),
-        )
-    }
-    AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            SyncLine(header.sync, header.lastRefresh, vm::refresh)
-            header.pinnedVersion?.let { PinnedVersionLine(it, menu.onOpenVersion) }
+    Column(Modifier.onSizeChanged { if (!collapsed) headerHeight = it.height }) {
+        AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+            PlanTopBar(header, isWeek, menu, vm::toggleWeek)
+        }
+        if (!isWeek) {
+            DaySelector(
+                days = chips.ifEmpty { week.chips },
+                position = pager.currentPage + pager.currentPageOffsetFraction,
+                onSelect = { index ->
+                    vm.showDay()
+                    scope.launch { pager.animateScrollToPage(index) }
+                },
+                collapsed = collapsed,
+                modifier = Modifier.padding(vertical = if (collapsed) 8.dp else 0.dp),
+            )
+        }
+        AnimatedVisibility(!collapsed, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                SyncLine(header.sync, header.lastRefresh, vm::refresh)
+                header.pinnedVersion?.let { PinnedVersionLine(it, menu.onOpenVersion) }
+            }
         }
     }
     Hairline()
@@ -189,7 +195,7 @@ private fun ColumnScope.PlanContent(
         })
         else -> PullToRefreshBox(isRefreshing = header.sync.refreshing, onRefresh = vm::refresh, modifier = Modifier.fillMaxSize()) {
             HorizontalPager(state = pager, key = { week.dates[it].toEpochDay() }, modifier = Modifier.fillMaxSize()) { page ->
-                DayPage(vm, week.dates[page], isToday = week.dates[page] == week.today, isCurrent = pager.currentPage == page, onCollapsed = { collapsed = it })
+                DayPage(vm, week.dates[page], isToday = week.dates[page] == week.today, isCurrent = pager.currentPage == page, collapsed = collapsed, headerHeight = { headerHeight }, onCollapsed = { collapsed = it })
             }
         }
     }
@@ -281,10 +287,23 @@ private fun ProfileChip(profile: Profile?, onClick: () -> Unit) {
 }
 
 @Composable
-private fun DayPage(vm: PlanViewModel, date: LocalDate, isToday: Boolean, isCurrent: Boolean, onCollapsed: (Boolean) -> Unit) {
+private fun DayPage(
+    vm: PlanViewModel,
+    date: LocalDate,
+    isToday: Boolean,
+    isCurrent: Boolean,
+    collapsed: Boolean,
+    headerHeight: () -> Int,
+    onCollapsed: (Boolean) -> Unit,
+) {
     val state by remember(date) { vm.day(date) }.collectAsStateWithLifecycle()
     val scroll = rememberScrollState()
-    val scrolled by remember { derivedStateOf { scroll.value > 28 } }
+    val isCollapsed by rememberUpdatedState(collapsed)
+    // Collapsing gives the page up to the header's height more room. A page with less than that
+    // to scroll would then fit, snap back to the top and expand the header again, over and over.
+    val scrolled by remember {
+        derivedStateOf { scroll.value > CollapseAfterPx && (isCollapsed || scroll.maxValue > headerHeight() + CollapseAfterPx) }
+    }
     LaunchedEffect(scrolled, isCurrent) { if (isCurrent) onCollapsed(scrolled) }
 
     when (val s = state) {
@@ -411,3 +430,5 @@ private fun Legend(color: androidx.compose.ui.graphics.Color, label: String) {
         Text(label, fontSize = 12.sp, color = QbitTheme.colors.muted, style = MaterialTheme.typography.bodySmall)
     }
 }
+
+private const val CollapseAfterPx = 28
