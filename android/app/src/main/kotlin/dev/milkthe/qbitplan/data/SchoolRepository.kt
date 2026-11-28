@@ -64,7 +64,7 @@ class SchoolRepository @Inject constructor(
     // Parsed once and kept for the process lifetime: re-parsing ~680 KB per collector
     // is noticeable on low-end phones.
     val timetable: Flow<Cached<Timetable>?> = cache.observe(KEY_TIMETABLE)
-        .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
+        .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt && old?.version == new?.version }
         .map { entry -> entry?.parseOrNull { RegularTimetableParser.parse(it.body, it.version.orEmpty()) } }
         .flowOn(Dispatchers.Default)
         .shareIn(scope, SharingStarted.Lazily, replay = 1)
@@ -75,7 +75,9 @@ class SchoolRepository @Inject constructor(
      */
     suspend fun currentTimetable(): Timetable? {
         val stored = cache.get(KEY_TIMETABLE) ?: return null
-        return withTimeoutOrNull(PARSE_WAIT_MS) { timetable.first { it?.fetchedAt == stored.fetchedAt } }?.value
+        return withTimeoutOrNull(PARSE_WAIT_MS) {
+            timetable.first { it?.fetchedAt == stored.fetchedAt && it.value.ttNum == stored.version.orEmpty() }
+        }?.value
     }
 
     private val substitutionFlows = ConcurrentHashMap<LocalDate, Flow<Cached<DaySubstitutions>?>>()
