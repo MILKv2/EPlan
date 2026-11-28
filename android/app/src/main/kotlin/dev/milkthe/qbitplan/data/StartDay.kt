@@ -35,7 +35,7 @@ class StartDay @Inject constructor(
     /** A day of only cancelled lessons still ends after the last of them. */
     private suspend fun lastLessonEnd(date: LocalDate): LocalTime? = withContext(Dispatchers.Default) {
         if (!date.isSchoolDay()) return@withContext null
-        val timetable = repository.timetable.first()?.value ?: return@withContext null
+        val timetable = repository.currentTimetable() ?: return@withContext null
         val prefs = preferences.preferences.first()
         val substitutions = repository.substitutions(date).first()?.value
         val planner = DayPlanner(timetable)

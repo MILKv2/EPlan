@@ -20,6 +20,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -66,6 +68,15 @@ class SchoolRepository @Inject constructor(
         .map { entry -> entry?.parseOrNull { RegularTimetableParser.parse(it.body, it.version.orEmpty()) } }
         .flowOn(Dispatchers.Default)
         .shareIn(scope, SharingStarted.Lazily, replay = 1)
+
+    /**
+     * The timetable as stored right now. [timetable] may still replay the previous value just after
+     * a refresh, until the new copy is parsed; this waits for it (parsed once, shared as usual).
+     */
+    suspend fun currentTimetable(): Timetable? {
+        val stored = cache.get(KEY_TIMETABLE) ?: return null
+        return withTimeoutOrNull(PARSE_WAIT_MS) { timetable.first { it?.fetchedAt == stored.fetchedAt } }?.value
+    }
 
     private val substitutionFlows = ConcurrentHashMap<LocalDate, Flow<Cached<DaySubstitutions>?>>()
 
@@ -181,5 +192,6 @@ class SchoolRepository @Inject constructor(
         /** Re-download even without a version change: the school may edit a version in place. */
         val TIMETABLE_MAX_AGE: Duration = Duration.ofHours(12)
         const val SUBSTITUTIONS_KEEP_DAYS = 7L
+        private const val PARSE_WAIT_MS = 10_000L
     }
 }
