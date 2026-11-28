@@ -44,4 +44,15 @@ class SchoolCalendarTest {
         assertEquals(friday, planStartDay(friday, LocalTime.of(18, 0), lastLessonEnd = null))
         assertEquals(monday, planStartDay(saturday, LocalTime.of(9, 0), end))
     }
+
+    @Test
+    fun `plan day changes at the end of the last lesson, then at midnight`() {
+        val friday = LocalDate.of(2026, 11, 27)
+        val end = LocalTime.of(14, 25)
+        assertEquals(friday.atTime(end), nextPlanDayChange(friday, LocalTime.of(9, 0), end))
+        assertEquals(friday.plusDays(1).atStartOfDay(), nextPlanDayChange(friday, end, end))
+        assertEquals(friday.plusDays(1).atStartOfDay(), nextPlanDayChange(friday, LocalTime.of(9, 0), lastLessonEnd = null))
+        val saturday = friday.plusDays(1)
+        assertEquals(saturday.plusDays(1).atStartOfDay(), nextPlanDayChange(saturday, LocalTime.of(9, 0), end))
+    }
 }

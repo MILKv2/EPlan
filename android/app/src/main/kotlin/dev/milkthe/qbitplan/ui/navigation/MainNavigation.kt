@@ -77,6 +77,7 @@ import dev.milkthe.qbitplan.ui.search.SearchScreen
 import dev.milkthe.qbitplan.ui.settings.AboutScreen
 import dev.milkthe.qbitplan.ui.settings.LicensesScreen
 import dev.milkthe.qbitplan.ui.settings.SettingsScreen
+import dev.milkthe.qbitplan.ui.settings.VersionScreen
 import dev.milkthe.qbitplan.ui.substitutions.SubstitutionsScreen
 import dev.milkthe.qbitplan.ui.theme.QbitTheme
 import kotlinx.serialization.Serializable
@@ -88,6 +89,7 @@ import kotlin.reflect.KClass
 @Serializable data object SettingsRoute
 @Serializable data object AboutRoute
 @Serializable data object LicensesRoute
+@Serializable data object VersionRoute
 
 /** Profile editor: the onboarding steps, opened on the last one. */
 @Serializable data object ProfileRoute
@@ -165,13 +167,18 @@ fun MainNavigation(badgeVm: BadgeViewModel = hiltViewModel()) {
             predictivePopEnterTransition = { poppedBack() },
             predictivePopExitTransition = { popOut() },
         ) {
-            screen<PlanRoute> { PlanScreen(onEditProfile = editProfile, onOpenSettings = { nav.openTab(SettingsRoute) }) }
+            screen<PlanRoute> {
+                PlanScreen(onEditProfile = editProfile, onOpenSettings = { nav.openTab(SettingsRoute) }, onOpenVersion = { nav.navigate(VersionRoute) })
+            }
             screen<SubstitutionsRoute> { SubstitutionsScreen() }
             screen<SearchRoute> { SearchScreen(onOpen = openDetail) }
-            screen<SettingsRoute> { SettingsScreen(onAbout = { nav.navigate(AboutRoute) }, onEditProfile = editProfile) }
+            screen<SettingsRoute> {
+                SettingsScreen(onAbout = { nav.navigate(AboutRoute) }, onEditProfile = editProfile, onVersion = { nav.navigate(VersionRoute) })
+            }
             screen<DetailRoute> { DetailScreen(onBack = { nav.popBackStack() }, onOpen = openDetail) }
             screen<AboutRoute> { AboutScreen(onBack = { nav.popBackStack() }, onLicenses = { nav.navigate(LicensesRoute) }) }
             screen<LicensesRoute> { LicensesScreen(onBack = { nav.popBackStack() }) }
+            screen<VersionRoute> { VersionScreen(onBack = { nav.popBackStack() }) }
             screen<ProfileRoute> { OnboardingScreen(onClose = { nav.popBackStack() }) }
         }
     }

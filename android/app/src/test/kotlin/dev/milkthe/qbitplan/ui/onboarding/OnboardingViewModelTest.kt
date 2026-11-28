@@ -5,6 +5,7 @@ import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
 import dev.milkthe.qbitplan.data.SchoolRepository
+import dev.milkthe.qbitplan.data.StartDay
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.prefs.UserMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
@@ -47,7 +48,7 @@ class OnboardingViewModelTest {
     private val clock = MutableClock(LocalDateTime.of(2026, 11, 24, 9, 5).atZone(zone).toInstant(), zone)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val repo = SchoolRepository(FakeEdupageApi(), InMemoryResponseCache(), clock, scope)
-    private val sync = SyncManager(repo, clock, scope)
+    private val sync by lazy { SyncManager(repo, prefs, StartDay(repo, prefs, clock), clock, scope) }
     private lateinit var prefs: UserPreferencesRepository
 
     @Before

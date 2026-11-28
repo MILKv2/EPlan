@@ -1,5 +1,6 @@
 package dev.milkthe.qbitplan.data
 
+import dev.milkthe.qbitplan.core.model.VersionPin
 import dev.milkthe.qbitplan.data.local.CachedEntry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -124,5 +125,26 @@ class SchoolRepositoryTest {
         assertEquals(listOf(LocalDate.of(2026, 11, 27), LocalDate.of(2026, 11, 30)), repo.defaultSubstitutionDates())
         clock.now = Instant.parse("2026-11-28T09:00:00Z") // Saturday
         assertEquals(listOf(LocalDate.of(2026, 11, 28), LocalDate.of(2026, 11, 30)), repo.defaultSubstitutionDates())
+    }
+
+    @Test
+    fun `the version in force on the plan's day is downloaded, not default_num`() = runTest {
+        api.versionsBody = fixture("ttviewer_2026-11-28.json") // default_num 190, from 2026-11-28; 189 still visible
+        repo.refresh(substitutionDates = emptyList(), versionDate = LocalDate.of(2026, 11, 27))
+        repo.refresh(substitutionDates = emptyList(), versionDate = LocalDate.of(2026, 11, 30))
+        assertEquals(listOf("189", "190"), api.timetableCalls)
+
+        val versions = assertNotNull(repo.versions.first())
+        assertEquals(2026, versions.schoolYear)
+        assertEquals("190", versions.versions.defaultTtNum)
+    }
+
+    @Test
+    fun `a pinned version wins until a newer one is published`() = runTest {
+        api.versionsBody = fixture("ttviewer_2026-11-28.json")
+        val monday = LocalDate.of(2026, 11, 30)
+        repo.refresh(substitutionDates = emptyList(), versionDate = monday, pin = VersionPin("188", newestAtPin = "190"))
+        repo.refresh(substitutionDates = emptyList(), versionDate = monday, pin = VersionPin("188", newestAtPin = "189"))
+        assertEquals(listOf("188", "190"), api.timetableCalls)
     }
 }

@@ -10,6 +10,8 @@ import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.SyncState
 import dev.milkthe.qbitplan.data.UpdateRepository
+import dev.milkthe.qbitplan.data.VersionStatus
+import dev.milkthe.qbitplan.data.versionStatus
 import dev.milkthe.qbitplan.data.prefs.ThemeMode
 import dev.milkthe.qbitplan.data.prefs.UserPreferences
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
@@ -30,6 +32,7 @@ data class SettingsState(
     val sync: SyncState = SyncState(),
     /** Newer release to offer, or `null`. */
     val update: AppRelease? = null,
+    val version: VersionStatus? = null,
 )
 
 @HiltViewModel
@@ -40,10 +43,19 @@ class SettingsViewModel @Inject constructor(
     updates: UpdateRepository,
 ) : ViewModel() {
 
+    private val timetable = combine(repository.timetable, repository.versions) { tt, versions -> tt to versions }
+
     val state: StateFlow<SettingsState> = combine(
-        preferences.preferences, repository.timetable, repository.lastRefresh, sync.state, updates.available,
-    ) { prefs, tt, last, s, update ->
-        SettingsState(prefs = prefs, profile = tt?.let { prefs.resolve(it.value) }, lastRefresh = last, sync = s, update = update)
+        preferences.preferences, timetable, repository.lastRefresh, sync.state, updates.available,
+    ) { prefs, (tt, versions), last, s, update ->
+        SettingsState(
+            prefs = prefs,
+            profile = tt?.let { prefs.resolve(it.value) },
+            lastRefresh = last,
+            sync = s,
+            update = update,
+            version = versionStatus(versions, tt?.value, prefs.versionPin),
+        )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsState())
 
     fun setTheme(theme: ThemeMode) = viewModelScope.launch { preferences.setTheme(theme) }

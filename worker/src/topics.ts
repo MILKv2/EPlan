@@ -19,3 +19,6 @@ export const classTopic = (className: string): string => `klasa-${slug(className
 
 /** Full name as in substitutions, e.g. "Jan Kowalski". */
 export const teacherTopic = (fullName: string): string => `naucz-${slug(fullName)}`;
+
+/** Every install with notifications on: a new timetable version was published. */
+export const TIMETABLE_TOPIC = 'plan-lekcji';

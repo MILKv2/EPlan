@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
 import { clearTokenCache } from '../src/fcm.ts';
 import { run, stateExpiration, type Env, type KVNamespace } from '../src/index.ts';
-import { substitutionsHtml, testAccount } from './helpers.ts';
+import { fixtureJson, substitutionsHtml, testAccount } from './helpers.ts';
 
 const NOW = new Date('2026-11-24T08:00:00Z'); // watches 11-24, 11-25, 11-26
 const quiet = { log() {}, error() {} };
@@ -29,6 +29,7 @@ function fakeNetwork({ edit = (_, html) => html, failSends = false }: { edit?: E
   const sends: { condition: string; data: Record<string, string> }[] = [];
   const fetchImpl: typeof fetch = async (url, init) => {
     const target = String(url);
+    if (target.includes('ttviewer')) return Response.json(fixtureJson('ttviewer_2026-11-28.json'));
     if (target.includes('edupage.org')) {
       const date = JSON.parse(String(init?.body)).__args[1].date;
       const file = ['2026-11-24', '2026-11-25'].includes(date) ? date : '2026-11-21';
@@ -49,7 +50,7 @@ test('the first sighting of a day is stored without notifying', async () => {
   const net = fakeNetwork();
   await run(env, { now: NOW, fetchImpl: net.fetchImpl, log: quiet });
   assert.equal(net.sends.length, 0);
-  assert.deepEqual([...env.STATE.values.keys()].sort(), ['subst:2026-11-24', 'subst:2026-11-25', 'subst:2026-11-26']);
+  assert.deepEqual([...env.STATE.values.keys()].sort(), ['subst:2026-11-24', 'subst:2026-11-25', 'subst:2026-11-26', 'timetable']);
   assert.equal(env.STATE.expirations.get('subst:2026-11-24'), Date.parse('2026-11-26T00:00:00Z') / 1000);
 });
 

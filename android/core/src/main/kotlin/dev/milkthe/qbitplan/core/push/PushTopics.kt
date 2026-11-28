@@ -3,10 +3,13 @@ package dev.milkthe.qbitplan.core.push
 import java.text.Normalizer
 
 /**
- * FCM topics the worker (worker/src/topics.ts) pushes to when a day's substitutions change.
+ * FCM topics the worker (worker/src/topics.ts) pushes to: a class or teacher topic when a day's
+ * substitutions change, [TIMETABLE] when a new timetable version is published.
  * Both sides are tested against fixtures/topics.json.
  */
 object PushTopics {
+
+    const val TIMETABLE = "plan-lekcji"
 
     fun forClass(classShort: String): String = "klasa-${slug(classShort)}"
 

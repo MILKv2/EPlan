@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
+import dev.milkthe.qbitplan.core.model.VersionPin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -46,7 +47,21 @@ class UserPreferencesRepository @Inject constructor(
 
     suspend fun setOnlyMyGroups(enabled: Boolean) = dataStore.edit { it[ONLY_MY_GROUPS] = enabled }
 
-    suspend fun setPushTopic(topic: String?) = dataStore.edit { if (topic == null) it.remove(PUSH_TOPIC) else it[PUSH_TOPIC] = topic }
+    suspend fun setPushTopics(topics: Set<String>) = dataStore.edit {
+        it.remove(LEGACY_PUSH_TOPIC)
+        it[PUSH_TOPICS] = topics
+    }
+
+    suspend fun setVersionPin(pin: VersionPin?) = dataStore.edit {
+        if (pin == null) {
+            it.remove(PIN_TT_NUM)
+            it.remove(PIN_NEWEST)
+        } else {
+            it[PIN_TT_NUM] = pin.ttNum
+            val newest = pin.newestAtPin
+            if (newest == null) it.remove(PIN_NEWEST) else it[PIN_NEWEST] = newest
+        }
+    }
 
     private fun Preferences.toUserPreferences() = UserPreferences(
         mode = this[MODE]?.let { name -> UserMode.entries.find { it.name == name } },
@@ -60,7 +75,9 @@ class UserPreferencesRepository @Inject constructor(
         notificationsEnabled = this[NOTIFICATIONS] ?: false,
         quietWeekends = this[QUIET_WEEKENDS] ?: true,
         onlyMyGroups = this[ONLY_MY_GROUPS] ?: true,
-        pushTopic = this[PUSH_TOPIC],
+        // Before the timetable topic there was only the profile's topic.
+        pushTopics = this[PUSH_TOPICS] ?: setOfNotNull(this[LEGACY_PUSH_TOPIC]),
+        versionPin = this[PIN_TT_NUM]?.let { VersionPin(it, this[PIN_NEWEST]) },
     )
 
     private companion object {
@@ -75,6 +92,9 @@ class UserPreferencesRepository @Inject constructor(
         val NOTIFICATIONS = booleanPreferencesKey("notifications_enabled")
         val QUIET_WEEKENDS = booleanPreferencesKey("quiet_weekends")
         val ONLY_MY_GROUPS = booleanPreferencesKey("only_my_groups")
-        val PUSH_TOPIC = stringPreferencesKey("push_topic")
+        val LEGACY_PUSH_TOPIC = stringPreferencesKey("push_topic")
+        val PUSH_TOPICS = stringSetPreferencesKey("push_topics")
+        val PIN_TT_NUM = stringPreferencesKey("version_pin")
+        val PIN_NEWEST = stringPreferencesKey("version_pin_newest")
     }
 }

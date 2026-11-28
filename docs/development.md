@@ -10,7 +10,7 @@ worker/             Cloudflare Worker: co 5 min sprawdza zastępstwa, push FCM, 
 docs/               edupage-api.md: opis endpointów EduPage; screenshots/: zrzuty do README
 fixtures/           zapisane odpowiedzi EduPage do testów (apka + worker)
 .github/workflows/  android.yml: nowa wersja w android/version.properties na main → APK → GitHub Release
-                    tests.yml: testy apki i workera (worker wdraża Cloudflare z main, zob. worker/README.md)
+                    tests.yml: testy apki i workera, raz na PR (worker wdraża Cloudflare z main, zob. worker/README.md)
 ```
 
 Apka pobiera dane bezpośrednio z EduPage, bez własnego backendu. Worker tylko wysyła
@@ -23,12 +23,27 @@ albo `sdkmanager`). Szczegóły: [`android/README.md`](../android/README.md).
 
 ```bash
 cd android
-./gradlew :core:test :app:testDebugUnitTest   # testy jednostkowe
-./gradlew :app:assembleDebug                  # APK debug → app/build/outputs/apk/debug/
-./gradlew :app:testDebugUnitTest -Proborazzi.record=true   # zrzuty ekranów → app/build/screenshots/
+./gradlew :core:test :app:testGithubDebugUnitTest   # testy jednostkowe
+./gradlew :app:assembleGithubDebug                  # APK debug → app/build/outputs/apk/github/debug/
+./gradlew :app:testGithubDebugUnitTest -Proborazzi.record=true   # zrzuty ekranów → app/build/screenshots/
 ```
 
 Zrzuty w `docs/screenshots/` pochodzą z tego ostatniego polecenia.
+
+Dwa warianty (`productFlavors`): `github` (APK z GitHub Releases, sam sprawdza
+aktualizacje) i `play` (Google Play; bez sprawdzania aktualizacji). Ten sam
+`applicationId` i ten sam klucz podpisu, więc jedna wersja może zastąpić drugą.
+
+```bash
+./gradlew :app:bundlePlayRelease   # AAB do Play Console → app/build/outputs/bundle/playRelease/
+```
+
+## CI
+
+`tests.yml` uruchamia testy raz na PR: przy otwarciu (albo ponownym otwarciu lub
+oznaczeniu jako gotowy), a nie przy każdym pushu. Żeby przetestować nowe commity
+w otwartym PR, dodaj etykietę `run tests` albo uruchom workflow ręcznie
+(Actions → Tests → Run workflow). Artefakt `screenshots` zawiera zrzuty wszystkich ekranów.
 
 ## Wydanie
 
@@ -42,6 +57,8 @@ Jak wydać nową wersję:
    Poprawka: ostatnia liczba; nowa funkcja: środkowa (`1.1.0`). Każda liczba poniżej 100.
 2. Zmerguj PR do `main`. Workflow `android.yml` uruchomi testy, zbuduje podpisany
    `E-Plan-v1.0.2.apk`, utworzy tag `v1.0.2` i Release z listą zmian z PR-ów.
+   Podpisany `E-Plan-v1.0.2.aab` (wariant `play`) trafia do artefaktów tego przebiegu;
+   wgrywa się go w Play Console (zob. [`play/README.md`](play/README.md)).
 3. Apki sprawdzają ostatni Release najwyżej co 12 h. Gdy jest nowszy, na zakładce
    Ustawienia pojawia się kropka i przycisk „Pobierz” (link do APK z Release).
 

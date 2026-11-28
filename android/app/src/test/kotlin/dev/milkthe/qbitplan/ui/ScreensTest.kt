@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.lifecycle.SavedStateHandle
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.milkthe.qbitplan.core.model.VersionPin
 import dev.milkthe.qbitplan.core.update.AppVersion
 import dev.milkthe.qbitplan.core.update.ReleaseResponse
 import dev.milkthe.qbitplan.crash.CrashScreen
@@ -18,6 +19,7 @@ import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.FakeReleaseApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
+import dev.milkthe.qbitplan.data.PlanDayTracker
 import dev.milkthe.qbitplan.data.SchoolRepository
 import dev.milkthe.qbitplan.data.StartDay
 import dev.milkthe.qbitplan.data.SyncManager
@@ -37,6 +39,8 @@ import dev.milkthe.qbitplan.ui.search.SearchTab
 import dev.milkthe.qbitplan.ui.search.SearchViewModel
 import dev.milkthe.qbitplan.ui.settings.SettingsScreen
 import dev.milkthe.qbitplan.ui.settings.SettingsViewModel
+import dev.milkthe.qbitplan.ui.settings.VersionScreen
+import dev.milkthe.qbitplan.ui.settings.VersionViewModel
 import dev.milkthe.qbitplan.ui.substitutions.SubstitutionsScreen
 import dev.milkthe.qbitplan.ui.substitutions.SubstitutionsViewModel
 import dev.milkthe.qbitplan.ui.theme.AppTheme
@@ -60,6 +64,7 @@ import java.io.File
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
+import kotlin.test.assertEquals
 
 /**
  * Renders every screen against the real data stack fed with fixtures, on a small
@@ -76,8 +81,11 @@ class ScreensTest {
     private val zone = ZoneId.of("Europe/Warsaw")
     private val clock = MutableClock(LocalDateTime.of(2026, 11, 24, 9, 5).atZone(zone).toInstant(), zone)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    private val repo = SchoolRepository(FakeEdupageApi(), InMemoryResponseCache(), clock, scope)
-    private val sync = SyncManager(repo, clock, scope)
+    // The version list as published on 2026-11-28 (188-190 visible); the fake serves plan 189 for any version.
+    private val api = FakeEdupageApi().apply { versionsBody = fixture("ttviewer_2026-11-28.json") }
+    private val repo = SchoolRepository(api, InMemoryResponseCache(), clock, scope)
+    private val sync by lazy { SyncManager(repo, prefs, StartDay(repo, prefs, clock), clock, scope) }
+    private val planDays by lazy { PlanDayTracker(StartDay(repo, prefs, clock), repo, prefs, clock, scope) }
     private val releases = FakeReleaseApi()
     private val updates = UpdateRepository(releases, InMemoryResponseCache(), AppVersion(1, 0, 1), clock, scope)
     private lateinit var prefs: UserPreferencesRepository
@@ -85,7 +93,7 @@ class ScreensTest {
     @Before
     fun setUp() = runBlocking {
         prefs = UserPreferencesRepository(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "test.preferences_pb") })
-        repo.refresh(listOf(LocalDate.of(2026, 11, 24), LocalDate.of(2026, 11, 25)))
+        repo.refresh(listOf(LocalDate.of(2026, 11, 24), LocalDate.of(2026, 11, 25)), versionDate = LocalDate.of(2026, 11, 24))
         Unit
     }
 
@@ -114,7 +122,7 @@ class ScreensTest {
     @Test
     fun planStudentLight() {
         student()
-        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, planDays, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_light")
     }
@@ -122,7 +130,7 @@ class ScreensTest {
     @Test
     fun planStudentDark() {
         student()
-        show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
+        show(dark = true) { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, planDays, clock)) }
         waitForText("Anna Grzebień")
         capture("plan_student_dark")
     }
@@ -130,7 +138,7 @@ class ScreensTest {
     @Test
     fun lessonSheet() {
         student()
-        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, planDays, clock)) }
         waitForText("Informatyka")
         compose.onAllNodesWithText("Informatyka", substring = true).onFirst().performClick()
         waitForText("Sala")
@@ -140,7 +148,7 @@ class ScreensTest {
     @Test
     fun planWeek() {
         student()
-        val vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock).apply { toggleWeek() }
+        val vm = PlanViewModel(repo, prefs, sync, planDays, clock).apply { toggleWeek() }
         show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = vm) }
         waitForText("Pt")
         capture("plan_week")
@@ -149,7 +157,7 @@ class ScreensTest {
     @Test
     fun planTeacher() {
         teacher()
-        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)) }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, planDays, clock)) }
         waitForText("1at")
         capture("plan_teacher")
     }
@@ -157,7 +165,7 @@ class ScreensTest {
     @Test
     fun substitutions() {
         student()
-        val vm = SubstitutionsViewModel(repo, prefs, sync, StartDay(repo, prefs, clock), clock)
+        val vm = SubstitutionsViewModel(repo, prefs, sync, planDays, clock)
         // Robolectric sometimes misses the first emission from a background flow across tests;
         // start from the loaded state so the render check is deterministic.
         runBlocking { vm.state.first { !it.loading } }
@@ -192,8 +200,8 @@ class ScreensTest {
     @Test
     fun settings() {
         student()
-        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
-        waitForText("Ostatnia synchronizacja")
+        show { SettingsScreen(onAbout = {}, onEditProfile = {}, onVersion = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
+        waitForText("Automatycznie · listopad2026_RC3")
         capture("settings")
     }
 
@@ -202,7 +210,7 @@ class ScreensTest {
         student()
         releases.next = { ReleaseResponse.Fresh(fixture("github/latest_release.json"), etag = null) }
         runBlocking { updates.check() }
-        show { SettingsScreen(onAbout = {}, onEditProfile = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
+        show { SettingsScreen(onAbout = {}, onEditProfile = {}, onVersion = {}, vm = SettingsViewModel(repo, prefs, sync, updates)) }
         waitForText("Nowa wersja 1.0.2")
         capture("settings_update")
     }
@@ -219,5 +227,39 @@ class ScreensTest {
         show { OnboardingScreen(OnboardingViewModel(repo, prefs, sync, clock)) }
         waitForText("Kim jesteś?")
         capture("onboarding")
+    }
+
+    @Test
+    fun versionPicker() {
+        student()
+        show { VersionScreen(onBack = {}, vm = VersionViewModel(repo, prefs, sync, planDays)) }
+        waitForText("grudzien2026_RC1")
+        capture("version_picker")
+    }
+
+    @Test
+    fun planWithPinnedVersion() {
+        student()
+        runBlocking {
+            val pin = VersionPin("188", newestAtPin = "190")
+            prefs.setVersionPin(pin)
+            repo.refresh(emptyList(), versionDate = LocalDate.of(2026, 11, 24), pin = pin)
+        }
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = PlanViewModel(repo, prefs, sync, planDays, clock)) }
+        waitForText("Wybrana ręcznie wersja planu: listopad2026_RC2")
+        capture("plan_pinned_version")
+    }
+
+    @Test
+    fun planOpensNextWeekAfterFridayLessons() {
+        student()
+        clock.now = LocalDateTime.of(2026, 11, 27, 19, 0).atZone(zone).toInstant()
+        val vm = PlanViewModel(repo, prefs, sync, planDays, clock)
+        show { PlanScreen(onEditProfile = {}, onOpenSettings = {}, vm = vm) }
+        // The sync line is shown with the week; waiting on text also runs the main looper the view model uses.
+        waitForText("Zsynchronizowano")
+        val week = vm.week.value!!
+        assertEquals(LocalDate.of(2026, 11, 30), week.dates[week.initialPage])
+        capture("plan_next_week")
     }
 }

@@ -11,7 +11,7 @@ import dev.milkthe.qbitplan.core.schedule.isSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nextSchoolDay
 import dev.milkthe.qbitplan.data.SchoolRepository
-import dev.milkthe.qbitplan.data.StartDay
+import dev.milkthe.qbitplan.data.PlanDayTracker
 import dev.milkthe.qbitplan.data.SyncManager
 import dev.milkthe.qbitplan.data.SyncState
 import dev.milkthe.qbitplan.data.prefs.UserMode
@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
@@ -74,20 +76,32 @@ data class SubstitutionsState(
     val others: List<ClassSection> = emptyList(),
 )
 
+/** The two quick days: today (or the next school day on a weekend) and the school day after it. */
+@Immutable
+data class QuickDays(val today: LocalDate, val days: List<LocalDate>) {
+    companion object {
+        fun of(today: LocalDate) = QuickDays(today, nearestSchoolDay(today).let { listOf(it, nextSchoolDay(it)) })
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class SubstitutionsViewModel @Inject constructor(
     private val repository: SchoolRepository,
     preferences: UserPreferencesRepository,
     private val sync: SyncManager,
-    startDay: StartDay,
+    tracker: PlanDayTracker,
     clock: Clock,
 ) : ViewModel() {
 
-    val today: LocalDate = LocalDate.now(clock)
+    /** Follows the date, so the tab doesn't stay on yesterday while the app lives in the background. */
+    val quickDays: StateFlow<QuickDays> = tracker.days.filterNotNull()
+        .map { QuickDays.of(it.today) }
+        .distinctUntilChanged()
+        .stateIn(viewModelScope, SharingStarted.Eagerly, QuickDays.of(LocalDate.now(clock)))
 
-    /** The two quick days: today (or the next school day on a weekend) and the school day after it. */
-    val quickDays: List<LocalDate> = nearestSchoolDay(today).let { listOf(it, nextSchoolDay(it)) }
+    /** The day the tab last opened on by itself; while it is still selected, the tab moves on with the start day. */
+    @Volatile private var autoSelected: LocalDate? = null
 
     /** `null` until the start day is known: after the profile's last lesson the tab opens on the next school day. */
     private val selected = MutableStateFlow<LocalDate?>(null)
@@ -137,10 +151,17 @@ class SubstitutionsViewModel @Inject constructor(
     }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SubstitutionsState())
 
     init {
-        quickDays.forEach(sync::ensureSubstitutions)
+        quickDays.value.days.forEach(sync::ensureSubstitutions)
         viewModelScope.launch(Dispatchers.Default) {
-            // A pick made meanwhile wins.
-            selected.compareAndSet(null, startDay())
+            tracker.days.filterNotNull().collect { days ->
+                QuickDays.of(days.today).days.forEach(sync::ensureSubstitutions)
+                // A pick made meanwhile wins, unless the app was away and the start day moved on.
+                val current = selected.value
+                if (current == null || current == autoSelected || days.resumed) {
+                    autoSelected = days.start
+                    selected.value = days.start
+                }
+            }
         }
     }
 

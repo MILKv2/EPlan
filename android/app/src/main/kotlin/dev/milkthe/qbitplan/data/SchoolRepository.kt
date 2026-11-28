@@ -9,6 +9,9 @@ import dev.milkthe.qbitplan.core.edupage.schoolYearOf
 import dev.milkthe.qbitplan.core.model.DaySubstitutions
 import dev.milkthe.qbitplan.core.model.Timetable
 import dev.milkthe.qbitplan.core.model.TimetableVersions
+import dev.milkthe.qbitplan.core.model.VersionPin
+import dev.milkthe.qbitplan.core.model.choose
+import dev.milkthe.qbitplan.core.schedule.nearestSchoolDay
 import dev.milkthe.qbitplan.core.schedule.nextSchoolDay
 import dev.milkthe.qbitplan.data.local.CachedEntry
 import dev.milkthe.qbitplan.data.local.ResponseCache
@@ -17,6 +20,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -34,6 +39,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 data class Cached<T>(val value: T, val fetchedAt: Instant)
+
+/** The version list and the school year it was read for. */
+data class SchoolVersions(val versions: TimetableVersions, val schoolYear: Int)
 
 sealed interface RefreshResult {
     data object Success : RefreshResult
@@ -56,10 +64,21 @@ class SchoolRepository @Inject constructor(
     // Parsed once and kept for the process lifetime: re-parsing ~680 KB per collector
     // is noticeable on low-end phones.
     val timetable: Flow<Cached<Timetable>?> = cache.observe(KEY_TIMETABLE)
-        .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
+        .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt && old?.version == new?.version }
         .map { entry -> entry?.parseOrNull { RegularTimetableParser.parse(it.body, it.version.orEmpty()) } }
         .flowOn(Dispatchers.Default)
         .shareIn(scope, SharingStarted.Lazily, replay = 1)
+
+    /**
+     * The timetable as stored right now. [timetable] may still replay the previous value just after
+     * a refresh, until the new copy is parsed; this waits for it (parsed once, shared as usual).
+     */
+    suspend fun currentTimetable(): Timetable? {
+        val stored = cache.get(KEY_TIMETABLE) ?: return null
+        return withTimeoutOrNull(PARSE_WAIT_MS) {
+            timetable.first { it?.fetchedAt == stored.fetchedAt && it.value.ttNum == stored.version.orEmpty() }
+        }?.value
+    }
 
     private val substitutionFlows = ConcurrentHashMap<LocalDate, Flow<Cached<DaySubstitutions>?>>()
 
@@ -79,15 +98,32 @@ class SchoolRepository @Inject constructor(
     /** Versions are fetched on every refresh, so this is the last successful refresh. */
     val lastRefresh: Flow<Instant?> = cache.observe(KEY_VERSIONS).map { it?.fetchedAt }
 
+    val versions: Flow<SchoolVersions?> = cache.observe(KEY_VERSIONS)
+        .distinctUntilChanged { old, new -> old?.fetchedAt == new?.fetchedAt }
+        .map { entry ->
+            entry?.parseOrNull {
+                // Older caches stored default_num here, not the year.
+                val year = it.version?.toIntOrNull()?.takeIf { y -> y in 2000..2999 } ?: schoolYearOf(LocalDate.now(clock))
+                SchoolVersions(TimetableVersionsParser.parse(it.body), year)
+            }?.value
+        }
+        .flowOn(Dispatchers.Default)
+        .shareIn(scope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+
     /**
-     * `default_num` changes every few weeks, so the version list is fetched every time;
-     * the timetable only when the version changed or the cached copy is stale.
+     * New versions are published every few weeks, so the version list is fetched every time;
+     * the timetable only when the chosen version changed or the cached copy is stale.
+     * [versionDate]: the day the plan opens on, which picks the version in force (see [choose]).
      */
-    suspend fun refresh(substitutionDates: List<LocalDate> = defaultSubstitutionDates()): RefreshResult =
+    suspend fun refresh(
+        substitutionDates: List<LocalDate> = defaultSubstitutionDates(),
+        versionDate: LocalDate = nearestSchoolDay(LocalDate.now(clock)),
+        pin: VersionPin? = null,
+    ): RefreshResult =
         refreshMutex.withLock {
             runRefresh {
-                val ttNum = fetchVersions().defaultTtNum
-                    ?: throw EdupageException("No default timetable published for this school year")
+                val ttNum = fetchVersions(versionDate, pin)
+                    ?: throw EdupageException("No timetable published for this school year")
 
                 val cached = cache.get(KEY_TIMETABLE)
                 if (cached == null || cached.version != ttNum || cached.isOlderThan(TIMETABLE_MAX_AGE)) {
@@ -105,17 +141,19 @@ class SchoolRepository @Inject constructor(
 
     suspend fun refreshSubstitutions(date: LocalDate): RefreshResult = runRefresh { fetchSubstitutions(date) }
 
-    private suspend fun fetchVersions(): TimetableVersions {
-        val year = schoolYearOf(LocalDate.now(clock))
+    /** Returns the version to download. */
+    private suspend fun fetchVersions(versionDate: LocalDate, pin: VersionPin?): String? {
+        var year = schoolYearOf(LocalDate.now(clock))
         var raw = api.fetchTimetableVersions(year)
-        var versions = TimetableVersionsParser.parse(raw)
-        if (versions.defaultTtNum == null) {
+        var choice = TimetableVersionsParser.parse(raw).choose(versionDate, year, pin)
+        if (choice == null) {
             // Early in the school year the new year may have no timetable yet.
-            raw = api.fetchTimetableVersions(year - 1)
-            versions = TimetableVersionsParser.parse(raw)
+            year -= 1
+            raw = api.fetchTimetableVersions(year)
+            choice = TimetableVersionsParser.parse(raw).choose(versionDate, year, pin)
         }
-        cache.put(CachedEntry(KEY_VERSIONS, raw, versions.defaultTtNum, clock.instant()))
-        return versions
+        cache.put(CachedEntry(KEY_VERSIONS, raw, year.toString(), clock.instant()))
+        return choice?.ttNum
     }
 
     private suspend fun fetchSubstitutions(date: LocalDate) {
@@ -156,5 +194,6 @@ class SchoolRepository @Inject constructor(
         /** Re-download even without a version change: the school may edit a version in place. */
         val TIMETABLE_MAX_AGE: Duration = Duration.ofHours(12)
         const val SUBSTITUTIONS_KEEP_DAYS = 7L
+        private const val PARSE_WAIT_MS = 10_000L
     }
 }

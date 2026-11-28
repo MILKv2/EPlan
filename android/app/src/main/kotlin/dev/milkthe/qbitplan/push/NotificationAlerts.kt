@@ -30,7 +30,7 @@ import javax.inject.Singleton
 class NotificationAlerts @Inject constructor(
     @ApplicationContext private val context: Context,
     private val clock: Clock,
-) : ChangeAlerts {
+) : ChangeAlerts, TimetableAlerts {
 
     override fun show(date: LocalDate, changes: List<LessonChange>) {
         post(date, changes.map { NotificationLine(it.lesson.periods, if (it.dropped) droppedLine(it.lesson) else line(it.lesson)) })
@@ -40,29 +40,53 @@ class NotificationAlerts @Inject constructor(
         post(date, listOf(NotificationLine(null, context.getString(R.string.push_unknown))))
     }
 
-    fun createChannel() {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val channel = NotificationChannel(CHANNEL_ID, context.getString(R.string.push_channel), NotificationManager.IMPORTANCE_HIGH)
-            .apply { description = context.getString(R.string.push_channel_desc) }
-        context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    override fun showNewTimetable(firstDay: LocalDate, downloaded: Boolean) {
+        if (!canPost()) return
+        createChannel()
+        val notification = NotificationCompat.Builder(context, TIMETABLE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(context.getString(R.string.push_timetable_title, DAY.format(firstDay)))
+            .setContentText(context.getString(if (downloaded) R.string.push_timetable_text else R.string.push_timetable_text_offline))
+            .setContentIntent(openApp())
+            .setAutoCancel(true)
+            .setCategory(NotificationCompat.CATEGORY_EVENT)
+            .build()
+        NotificationManagerCompat.from(context).notify(TIMETABLE_TAG, 0, notification)
     }
 
+    /** Both channels, so either can be muted on its own in the system settings. */
+    fun createChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL_ID, context.getString(R.string.push_channel), NotificationManager.IMPORTANCE_HIGH)
+                .apply { description = context.getString(R.string.push_channel_desc) },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(TIMETABLE_CHANNEL_ID, context.getString(R.string.push_timetable_channel), NotificationManager.IMPORTANCE_DEFAULT)
+                .apply { description = context.getString(R.string.push_timetable_channel_desc) },
+        )
+    }
+
+    private fun canPost(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+        ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+
+    private fun openApp(): PendingIntent = PendingIntent.getActivity(
+        context,
+        0,
+        Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    )
+
     private fun post(date: LocalDate, added: List<NotificationLine>) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
+        if (!canPost()) return
         createChannel()
         val id = date.toEpochDay().toInt()
         val shown = context.getSystemService(NotificationManager::class.java).activeNotifications
             .firstOrNull { it.id == id && it.tag == null }?.notification?.extras?.notificationLines().orEmpty()
         val merged = mergeLines(shown, added)
         val lines = merged.map { it.text }
-        val open = PendingIntent.getActivity(
-            context,
-            0,
-            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
+        val open = openApp()
         val style = NotificationCompat.InboxStyle()
         lines.take(MAX_LINES).forEach(style::addLine)
         if (lines.size > MAX_LINES) style.setSummaryText(context.getString(R.string.push_more, lines.size - MAX_LINES))
@@ -128,6 +152,9 @@ class NotificationAlerts @Inject constructor(
 
     private companion object {
         const val CHANNEL_ID = "changes"
+        const val TIMETABLE_CHANNEL_ID = "timetable"
+        // Tagged, so it never collides with the per-day ids (epoch days) of change notifications.
+        const val TIMETABLE_TAG = "timetable"
         const val MAX_LINES = 6
         val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE d.MM", PolishLocale)
     }

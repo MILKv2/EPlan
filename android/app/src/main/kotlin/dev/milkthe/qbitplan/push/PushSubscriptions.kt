@@ -38,8 +38,9 @@ class FirebaseTopicSubscriber @Inject constructor() : TopicSubscriber {
 }
 
 /**
- * Keeps this install subscribed to its profile's topic (class or teacher), and to none while
- * notifications are off. The topic in use is saved, so a profile change unsubscribes the old one.
+ * Keeps this install subscribed to its profile's topic (class or teacher) and the new-timetable
+ * topic, and to none while notifications are off. The topics in use are saved, so a profile
+ * change unsubscribes the old one.
  */
 @Singleton
 class PushSubscriptions @Inject constructor(
@@ -50,7 +51,7 @@ class PushSubscriptions @Inject constructor(
     fun start() {
         scope.launch {
             preferences.preferences
-                .map { desiredTopic(it) to it.pushTopic }
+                .map { desiredTopics(it) to it.pushTopics }
                 .distinctUntilChanged()
                 .collectLatest { (wanted, current) -> if (wanted != current) switchTo(wanted, current) }
         }
@@ -59,16 +60,17 @@ class PushSubscriptions @Inject constructor(
     /** A new FCM token can come without the old subscriptions. */
     fun resubscribe() {
         scope.launch {
-            val topic = preferences.preferences.first().pushTopic ?: return@launch
-            runCatching { subscriber.subscribe(topic) }.onFailure { Log.w(TAG, "Resubscribing to $topic failed", it) }
+            for (topic in preferences.preferences.first().pushTopics) {
+                runCatching { subscriber.subscribe(topic) }.onFailure { Log.w(TAG, "Resubscribing to $topic failed", it) }
+            }
         }
     }
 
-    private suspend fun switchTo(wanted: String?, current: String?) {
+    private suspend fun switchTo(wanted: Set<String>, current: Set<String>) {
         try {
-            current?.let { subscriber.unsubscribe(it) }
-            wanted?.let { subscriber.subscribe(it) }
-            preferences.setPushTopic(wanted)
+            (current - wanted).forEach { subscriber.unsubscribe(it) }
+            (wanted - current).forEach { subscriber.subscribe(it) }
+            preferences.setPushTopics(wanted)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -82,11 +84,12 @@ class PushSubscriptions @Inject constructor(
     }
 }
 
-fun desiredTopic(prefs: UserPreferences): String? {
-    if (!prefs.notificationsEnabled || !prefs.isOnboarded) return null
-    return when (prefs.mode) {
+fun desiredTopics(prefs: UserPreferences): Set<String> {
+    if (!prefs.notificationsEnabled || !prefs.isOnboarded) return emptySet()
+    val profile = when (prefs.mode) {
         UserMode.STUDENT -> prefs.classShort?.let(PushTopics::forClass)
         UserMode.TEACHER -> prefs.teacherFullName?.let(PushTopics::forTeacher)
         null -> null
     }
+    return setOfNotNull(profile, PushTopics.TIMETABLE)
 }

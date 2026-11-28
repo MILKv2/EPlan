@@ -102,6 +102,7 @@ fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
     val query by vm.queryText.collectAsStateWithLifecycle()
     val sync by vm.syncState.collectAsStateWithLifecycle()
     val lastRefresh by vm.lastRefresh.collectAsStateWithLifecycle()
+    val quick by vm.quickDays.collectAsStateWithLifecycle()
     var calendarOpen by rememberSaveable { mutableStateOf(false) }
     val colors = QbitTheme.colors
 
@@ -109,12 +110,12 @@ fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SegmentedControl(
-                    options = vm.quickDays.map { quickLabel(it, vm.today) },
-                    selected = selected?.let(vm.quickDays::indexOf) ?: -1,
-                    onSelect = { vm.select(vm.quickDays[it]) },
+                    options = quick.days.map { quickLabel(it, quick.today) },
+                    selected = selected?.let(quick.days::indexOf) ?: -1,
+                    onSelect = { vm.select(quick.days[it]) },
                     modifier = Modifier.weight(1f),
                 )
-                val custom = selected != null && selected !in vm.quickDays
+                val custom = selected != null && selected !in quick.days
                 Row(
                     Modifier
                         .height(48.dp)
@@ -153,7 +154,7 @@ fun SubstitutionsScreen(vm: SubstitutionsViewModel = hiltViewModel()) {
     }
 
     if (calendarOpen) {
-        CalendarSheet(vm, selected ?: vm.quickDays.first(), onDismiss = { calendarOpen = false })
+        CalendarSheet(vm, selected ?: quick.days.first(), today = quick.today, onDismiss = { calendarOpen = false })
     }
 }
 
@@ -354,7 +355,7 @@ private fun detailText(row: SubstitutionRow): String? {
 private val MonthTitle = DateTimeFormatter.ofPattern("LLLL yyyy", PolishLocale)
 
 @Composable
-private fun CalendarSheet(vm: SubstitutionsViewModel, selected: LocalDate, onDismiss: () -> Unit) {
+private fun CalendarSheet(vm: SubstitutionsViewModel, selected: LocalDate, today: LocalDate, onDismiss: () -> Unit) {
     val sheet = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded))
     val scope = rememberCoroutineScope()
     var month by remember { mutableStateOf(YearMonth.from(selected)) }
@@ -380,7 +381,7 @@ private fun CalendarSheet(vm: SubstitutionsViewModel, selected: LocalDate, onDis
                         Text(stringResource(R.string.calendar_has_changes), style = MaterialTheme.typography.bodySmall, color = colors.muted)
                     }
                 }
-                QbitButton(stringResource(R.string.today), { month = YearMonth.from(vm.today); pick(vm.today) }, variant = ButtonVariant.Secondary, modifier = Modifier.height(40.dp))
+                QbitButton(stringResource(R.string.today), { month = YearMonth.from(today); pick(today) }, variant = ButtonVariant.Secondary, modifier = Modifier.height(40.dp))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 RoundIconButton(Icons.AutoMirrored.Outlined.KeyboardArrowLeft, stringResource(R.string.calendar_prev), { month = month.minusMonths(1) }, size = 44.dp)
@@ -413,11 +414,11 @@ private fun CalendarSheet(vm: SubstitutionsViewModel, selected: LocalDate, onDis
                                 Text(
                                     date.dayOfMonth.toString(),
                                     fontSize = 15.sp,
-                                    fontWeight = if (date == vm.today) FontWeight.Bold else FontWeight.Normal,
+                                    fontWeight = if (date == today) FontWeight.Bold else FontWeight.Normal,
                                     color = when {
                                         sel -> colors.onAccent
                                         !inMonth || !enabled -> colors.muted.copy(alpha = 0.5f)
-                                        date == vm.today -> colors.accent.softForeground
+                                        date == today -> colors.accent.softForeground
                                         else -> colors.foreground
                                     },
                                     style = MaterialTheme.typography.bodyLarge,

@@ -9,7 +9,10 @@ data class TimetableVersion(
     val name: String,
     val validFrom: LocalDate,
     val hidden: Boolean,
-)
+) {
+    /** "grudzien2026_RC1" from "grudzien2026_RC1 (28.11. - 31.12.2026)". */
+    val shortName: String get() = name.substringBefore(" (").trim().ifEmpty { ttNum }
+}
 
 data class TimetableVersions(
     /** `null` when the school has no default timetable for the requested year. */

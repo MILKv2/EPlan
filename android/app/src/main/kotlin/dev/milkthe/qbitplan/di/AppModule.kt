@@ -25,6 +25,7 @@ import dev.milkthe.qbitplan.data.local.RoomResponseCache
 import dev.milkthe.qbitplan.push.ChangeAlerts
 import dev.milkthe.qbitplan.push.FirebaseTopicSubscriber
 import dev.milkthe.qbitplan.push.NotificationAlerts
+import dev.milkthe.qbitplan.push.TimetableAlerts
 import dev.milkthe.qbitplan.push.TopicSubscriber
 import okhttp3.OkHttpClient
 import java.time.Clock
@@ -92,4 +93,7 @@ abstract class BindingsModule {
 
     @Binds
     abstract fun changeAlerts(impl: NotificationAlerts): ChangeAlerts
+
+    @Binds
+    abstract fun timetableAlerts(impl: NotificationAlerts): TimetableAlerts
 }
