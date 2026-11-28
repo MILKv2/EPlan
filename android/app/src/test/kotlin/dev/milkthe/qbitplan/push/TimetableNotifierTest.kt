@@ -64,7 +64,9 @@ class TimetableNotifierTest {
     fun `downloads the new version and names its first school day`() = runBlocking {
         notifier().onNewTimetable(LocalDate.of(2026, 11, 28)) // a Saturday
         assertEquals(listOf(LocalDate.of(2026, 11, 30) to true), alerts.shown)
-        assertEquals("190", repo.timetable.first()?.value?.ttNum)
+        // First pick without a timetable is for today (189); with it the plan opens on Monday (190).
+        assertEquals(listOf("189", "190"), api.timetableCalls)
+        assertEquals("190", repo.currentTimetable()?.ttNum)
     }
 
     @Test
@@ -82,7 +84,7 @@ class TimetableNotifierTest {
         clock.now = LocalDateTime.of(2026, 11, 28, 9, 0).atZone(zone).toInstant()
         notifier().onNewTimetable(LocalDate.of(2026, 11, 28))
         assertEquals(emptyList(), alerts.shown)
-        assertEquals("190", repo.timetable.first()?.value?.ttNum, "downloaded all the same")
+        assertEquals("190", repo.currentTimetable()?.ttNum, "downloaded all the same")
     }
 
     @Test
@@ -90,6 +92,6 @@ class TimetableNotifierTest {
         prefs.setVersionPin(VersionPin("188", newestAtPin = "189"))
         sync.refreshNow()
         assertNull(prefs.preferences.first().versionPin)
-        assertEquals("190", repo.timetable.first()?.value?.ttNum)
+        assertEquals("190", repo.currentTimetable()?.ttNum)
     }
 }
