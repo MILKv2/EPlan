@@ -1,6 +1,7 @@
 package dev.milkthe.qbitplan.ui.onboarding
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
@@ -87,7 +88,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun `editing a student opens their groups and saves on the last step`() {
-        runBlocking { prefs.setStudent("-210", "1at", setOf("2. Grupa")) }
+        runBlocking { prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa"))) }
         val vm = vm()
         val state = vm.await { it.selection != null && it.divisions.isNotEmpty() }
         val sel = state.selection!!
@@ -104,7 +105,21 @@ class OnboardingViewModelTest {
         vm.await { it.selection?.step == GROUPS }
         vm.next()
         vm.await { it.finished }
-        assertEquals(setOf("2. Grupa"), runBlocking { prefs.preferences.first().groupNames })
+        // Saved before religion/ethics had "none": the editor starts on religion.
+        assertEquals(setOf("2. Grupa", "Religia"), runBlocking { prefs.preferences.first().groupNames })
+    }
+
+    @Test
+    fun `skipping religion and ethics survives editing`() {
+        runBlocking { prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa"), skipped = setOf("Religia", "Etyka"))) }
+        val vm = vm()
+        val sel = vm.await { it.selection != null && it.divisions.isNotEmpty() }.selection!!
+        assertEquals(1, sel.skippedDivisions.size)
+        vm.next()
+        vm.await { it.finished }
+        val saved = runBlocking { prefs.preferences.first() }
+        assertEquals(setOf("2. Grupa"), saved.groupNames)
+        assertEquals(setOf("Religia", "Etyka"), saved.skippedGroupNames)
     }
 
     @Test

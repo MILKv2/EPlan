@@ -1,6 +1,7 @@
 package dev.milkthe.qbitplan.push
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.core.model.VersionPin
 import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
@@ -50,7 +51,7 @@ class TimetableNotifierTest {
     @Before
     fun setUp() = runBlocking {
         prefs = UserPreferencesRepository(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "test.preferences_pb") })
-        prefs.setStudent("-210", "1at", emptySet())
+        prefs.setStudent("-210", "1at", GroupSelection(emptySet()))
         prefs.setNotificationsEnabled(true)
         sync = SyncManager(repo, prefs, StartDay(repo, prefs, clock), clock, scope)
     }

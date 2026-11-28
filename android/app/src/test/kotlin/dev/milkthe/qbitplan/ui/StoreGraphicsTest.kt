@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import com.github.takahirom.roborazzi.captureRoboImage
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.data.FakeEdupageApi
 import dev.milkthe.qbitplan.data.InMemoryResponseCache
 import dev.milkthe.qbitplan.data.MutableClock
@@ -89,7 +90,7 @@ class StoreGraphicsTest {
     fun setUp() = runBlocking {
         prefs = UserPreferencesRepository(PreferenceDataStoreFactory.create(scope = scope) { File(tmp.root, "test.preferences_pb") })
         repo.refresh(listOf(LocalDate.of(2026, 11, 24), LocalDate.of(2026, 11, 25)), versionDate = LocalDate.of(2026, 11, 24))
-        prefs.setStudent("-210", "1at", setOf("2. Grupa"))
+        prefs.setStudent("-210", "1at", GroupSelection(setOf("2. Grupa")))
         Unit
     }
 

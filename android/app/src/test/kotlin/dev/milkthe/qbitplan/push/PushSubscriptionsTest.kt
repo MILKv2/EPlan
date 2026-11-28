@@ -1,6 +1,7 @@
 package dev.milkthe.qbitplan.push
 
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import dev.milkthe.qbitplan.core.model.GroupSelection
 import dev.milkthe.qbitplan.data.prefs.UserPreferencesRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +52,7 @@ class PushSubscriptionsTest {
     @Test
     fun `follows the profile and the notifications switch`() = runBlocking {
         prefs.setNotificationsEnabled(true)
-        prefs.setStudent("-210", "1at", emptySet())
+        prefs.setStudent("-210", "1at", GroupSelection(emptySet()))
         awaitTopics("klasa-1at", "plan-lekcji")
 
         prefs.setTeacher("-161", "AG", "Anna Grzebień")
@@ -69,7 +70,7 @@ class PushSubscriptionsTest {
     @Test
     fun `nothing is saved when subscribing fails`() = runBlocking {
         subscriber.failing = true
-        prefs.setStudent("-210", "1at", emptySet())
+        prefs.setStudent("-210", "1at", GroupSelection(emptySet()))
         prefs.setNotificationsEnabled(true)
         Thread.sleep(300)
         assertEquals(emptySet(), prefs.preferences.first().pushTopics)
